@@ -1,0 +1,8 @@
+name = "gbp-pro"
+compatibility_date = "2024-01-01"
+pages_build_output_dir = "."
+
+[vars]
+# Defina as variáveis de ambiente no dashboard do Cloudflare Pages
+# GOOGLE_API_KEY = "sua-chave-aqui"
+# CLAUDE_API_KEY = "sua-chave-aqui"
