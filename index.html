@@ -492,9 +492,12 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 
     <!-- ===== PAGE: HEATMAP ===== -->
     <div class="page" id="page-heatmap">
-      <div class="section-header">
+      <div class="section-header" style="flex-wrap:wrap;gap:15px">
         <div><div class="page-title">Mapa de Calor SEO (Grid Tracking)</div><div class="page-sub">Rastreamento de ranking em múltiplos pontos ao redor da empresa</div></div>
-        <button class="btn btn-primary btn-sm" onclick="generateHeatmap()">🚀 Gerar Mapa de Calor</button>
+        <div style="display:flex;gap:10px;align-items:center">
+          <input type="text" id="heatmap_keyword" placeholder="Qual palavra-chave buscar?" class="input" style="width:250px">
+          <button class="btn btn-primary btn-sm" onclick="generateHeatmap()">🚀 Gerar Mapa</button>
+        </div>
       </div>
       <div id="heatmap_content">
         <div class="empty-state"><div class="empty-icon">📍</div><div class="empty-title">Mapa de Calor não gerado</div><div>Clique no botão acima para simular buscas de clientes em um raio de 3km.</div></div>
@@ -1123,7 +1126,9 @@ async function loadCompetitors() {
   document.getElementById('comp_content').innerHTML = `<div class="empty-state"><div class="spinner" style="margin:0 auto 12px"></div><div>Buscando rigorosamente os verdadeiros concorrentes na área...</div></div>`;
   const biz = APP.currentBiz;
   if (!biz || !biz.lat) return;
-  const keyword = biz.types?.[0]?.replace(/_/g, ' ') || 'empresa';
+  const ignoredTypes = ['establishment', 'point_of_interest', 'store', 'food', 'health'];
+  const validTypes = (biz.types || []).filter(t => !ignoredTypes.includes(t));
+  const keyword = validTypes.length > 0 ? validTypes[0].replace(/_/g, ' ') : biz.name;
   const nearUrl = `/api/places?action=nearby&lat=${biz.lat}&lng=${biz.lng}&keyword=${encodeURIComponent(keyword)}&radius=3000`;
   try {
     const nearRes = await fetch(nearUrl);
@@ -1152,7 +1157,11 @@ async function generateHeatmap() {
   const el = document.getElementById('heatmap_content');
   el.innerHTML = `<div class="empty-state"><div class="spinner" style="margin:0 auto 12px"></div><div class="empty-title">Gerando Mapa de Calor SEO...</div><div style="font-size:13px;color:var(--text2);margin-top:8px">Simulando buscas nos arredores (Grid Search). Isso pode levar alguns segundos.</div></div>`;
   
-  const keyword = biz.types?.[0]?.replace(/_/g, ' ') || biz.name;
+  const ignoredTypes = ['establishment', 'point_of_interest', 'store', 'food', 'health'];
+  const validTypes = (biz.types || []).filter(t => !ignoredTypes.includes(t));
+  const defaultKeyword = validTypes.length > 0 ? validTypes[0].replace(/_/g, ' ') : biz.name;
+  const keyword = document.getElementById('heatmap_keyword').value.trim() || defaultKeyword;
+  document.getElementById('heatmap_keyword').value = keyword; // show what was used
   
   // 3x3 Grid (center is biz.lat, biz.lng)
   const offset = 0.01; // Approx 1km step

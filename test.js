@@ -537,7 +537,9 @@ async function loadCompetitors() {
   document.getElementById('comp_content').innerHTML = `<div class="empty-state"><div class="spinner" style="margin:0 auto 12px"></div><div>Buscando rigorosamente os verdadeiros concorrentes na área...</div></div>`;
   const biz = APP.currentBiz;
   if (!biz || !biz.lat) return;
-  const keyword = biz.types?.[0]?.replace(/_/g, ' ') || 'empresa';
+  const ignoredTypes = ['establishment', 'point_of_interest', 'store', 'food', 'health'];
+  const validTypes = (biz.types || []).filter(t => !ignoredTypes.includes(t));
+  const keyword = validTypes.length > 0 ? validTypes[0].replace(/_/g, ' ') : biz.name;
   const nearUrl = `/api/places?action=nearby&lat=${biz.lat}&lng=${biz.lng}&keyword=${encodeURIComponent(keyword)}&radius=3000`;
   try {
     const nearRes = await fetch(nearUrl);
@@ -566,7 +568,11 @@ async function generateHeatmap() {
   const el = document.getElementById('heatmap_content');
   el.innerHTML = `<div class="empty-state"><div class="spinner" style="margin:0 auto 12px"></div><div class="empty-title">Gerando Mapa de Calor SEO...</div><div style="font-size:13px;color:var(--text2);margin-top:8px">Simulando buscas nos arredores (Grid Search). Isso pode levar alguns segundos.</div></div>`;
   
-  const keyword = biz.types?.[0]?.replace(/_/g, ' ') || biz.name;
+  const ignoredTypes = ['establishment', 'point_of_interest', 'store', 'food', 'health'];
+  const validTypes = (biz.types || []).filter(t => !ignoredTypes.includes(t));
+  const defaultKeyword = validTypes.length > 0 ? validTypes[0].replace(/_/g, ' ') : biz.name;
+  const keyword = document.getElementById('heatmap_keyword').value.trim() || defaultKeyword;
+  document.getElementById('heatmap_keyword').value = keyword; // show what was used
   
   // 3x3 Grid (center is biz.lat, biz.lng)
   const offset = 0.01; // Approx 1km step
@@ -596,7 +602,8 @@ async function generateHeatmap() {
 
   let html = `<div class="card-title mb-2"><span class="card-title-dot" style="background:var(--green)"></span>Grid de Posicionamento Local (Busca: "${keyword}")</div>
     <div style="margin-bottom:16px;font-size:13px;color:var(--text2);line-height:1.5">O mapa abaixo simula clientes buscando pelo serviço em 9 pontos diferentes ao redor do negócio (raio de 1-2km). O número indica a posição em que a empresa aparece. <strong style="color:var(--green)">1 a 3 é excelente</strong> (Local Pack). <strong style="color:var(--red)">Maior que 3 significa perda de clientes.</strong></div>
-    <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:10px;max-width:500px;margin:0 auto;background:url('https://maps.googleapis.com/maps/api/staticmap?center=${biz.lat},${biz.lng}&zoom=14&size=500x500&style=feature:all|element:labels|visibility:off&key=') no-repeat center/cover;border-radius:12px;padding:20px;box-shadow:inset 0 0 0 2000px rgba(245,245,243,0.85);border:1px solid var(--border)">
+    <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:15px;max-width:400px;margin:0 auto;background:#f5f5f3;border-radius:12px;padding:30px;border:1px solid var(--border);position:relative">
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:30px;height:30px;background:rgba(0,0,0,0.05);border-radius:50%;z-index:0;display:flex;align-items:center;justify-content:center"><span style="font-size:16px">🎯</span></div>
   `;
 
   resultsGrid.forEach(rank => {
