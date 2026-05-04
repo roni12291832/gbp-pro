@@ -332,8 +332,8 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 
     <div class="sidebar-footer">
       <div class="api-status" id="sidebarApiStatus">
-        <span class="api-dot" id="apiDot"></span>
-        <span id="apiStatusText">Nenhuma API configurada</span>
+        <span class="api-dot ok" id="apiDot"></span>
+        <span id="apiStatusText">Servidor Online</span>
       </div>
     </div>
   </div>
@@ -373,16 +373,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
               <input type="text" class="input-field" id="s_bizCity" placeholder="Ex: São Paulo, SP" />
             </div>
           </div>
-          <div class="field-group mb-2">
-            <label class="field-label">Google Places API Key <span style="color:var(--red)">*</span> <a href="https://developers.google.com/maps/documentation/places/web-service/get-api-key" target="_blank" style="font-weight:normal;font-size:11px;margin-left:6px">Como obter grátis →</a></label>
-            <input type="password" class="input-field" id="s_googleKey" placeholder="AIzaSy..." />
-            <span class="field-hint">Gratuito até $200/mês (~2.800 análises). Ative Places API no Google Cloud Console.</span>
-          </div>
-          <div class="field-group mb-2">
-            <label class="field-label">Claude API Key — análise com IA <span style="color:var(--text3);font-weight:normal">(opcional)</span> <a href="https://console.anthropic.com" target="_blank" style="font-weight:normal;font-size:11px;margin-left:6px">Obter chave →</a></label>
-            <input type="password" class="input-field" id="s_claudeKey" placeholder="sk-ant-..." />
-            <span class="field-hint">Habilita diagnóstico IA, análise de keywords e proposta comercial automática.</span>
-          </div>
+
 
           <div class="alert alert-info mb-2">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" style="flex-shrink:0;margin-top:1px"><circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/><path d="M12 8v4M12 16h.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -578,15 +569,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
       <div style="max-width:560px">
         <div class="card mb-2">
           <div class="card-title mb-2"><span class="card-title-dot" style="background:var(--green)"></span>Chaves de API</div>
-          <div class="field-group mb-2">
-            <label class="field-label">Google Places API Key</label>
-            <input type="password" class="input-field" id="cfg_google" placeholder="AIzaSy..." oninput="saveConfig()" />
-          </div>
-          <div class="field-group mb-2">
-            <label class="field-label">Claude API Key (Anthropic)</label>
-            <input type="password" class="input-field" id="cfg_claude" placeholder="sk-ant-..." oninput="saveConfig()" />
-          </div>
-          <div id="cfg_status" class="alert alert-info" style="display:none">✓ Chaves salvas</div>
+          <div style="font-size:13px;color:var(--text2);margin-bottom:12px">As chaves de API agora são gerenciadas com segurança no backend (Cloudflare).</div>
         </div>
         <div class="card">
           <div class="card-title mb-2"><span class="card-title-dot" style="background:var(--blue)"></span>Dados salvos</div>
@@ -615,31 +598,16 @@ let APP = {
    INIT
    =========================== */
 window.onload = () => {
-  if (APP.cfg.google) { document.getElementById('s_googleKey').value = APP.cfg.google; document.getElementById('cfg_google').value = APP.cfg.google; }
-  if (APP.cfg.claude) { document.getElementById('s_claudeKey').value = APP.cfg.claude; document.getElementById('cfg_claude').value = APP.cfg.claude; }
-  updateApiStatus();
   renderManageList();
   document.addEventListener('keydown', e => { if (e.key === 'Enter' && document.activeElement.id.startsWith('s_')) doSearch(); });
 };
 
 function saveConfig() {
-  APP.cfg.google = document.getElementById('cfg_google').value.trim();
-  APP.cfg.claude = document.getElementById('cfg_claude').value.trim();
-  localStorage.setItem('gbp_cfg', JSON.stringify(APP.cfg));
-  const s = document.getElementById('cfg_status');
-  s.style.display = 'flex';
-  setTimeout(() => s.style.display = 'none', 2000);
-  updateApiStatus();
+  // Config save removed
 }
 
 function updateApiStatus() {
-  const hasG = !!(APP.cfg.google || document.getElementById('s_googleKey').value.trim());
-  const hasC = !!(APP.cfg.claude || document.getElementById('s_claudeKey').value.trim());
-  const dot = document.getElementById('apiDot');
-  const txt = document.getElementById('apiStatusText');
-  if (hasG && hasC) { dot.className = 'api-dot ok'; txt.textContent = 'Google + IA configurados'; }
-  else if (hasG) { dot.className = 'api-dot ok'; txt.textContent = 'Google Places ativo'; }
-  else { dot.className = 'api-dot'; txt.textContent = 'Configure as API Keys'; }
+  // Status is hardcoded in HTML now
 }
 
 /* ===========================
@@ -682,23 +650,14 @@ function updateStep(steps, idx) {
 async function doSearch() {
   const name = document.getElementById('s_bizName').value.trim();
   const city = document.getElementById('s_bizCity').value.trim();
-  const gKey = document.getElementById('s_googleKey').value.trim() || APP.cfg.google;
-  const cKey = document.getElementById('s_claudeKey').value.trim() || APP.cfg.claude;
-
   document.getElementById('searchError').style.display = 'none';
   if (!name) return showSearchError('Informe o nome do negócio.');
-  if (!gKey) return showSearchError('A Google Places API Key é obrigatória. Veja como obter gratuitamente no link acima.');
-
-  APP.cfg.google = gKey;
-  if (cKey) APP.cfg.claude = cKey;
-  localStorage.setItem('gbp_cfg', JSON.stringify(APP.cfg));
-  updateApiStatus();
 
   const steps = [
     { label: 'Buscando negócio no Google Places' },
     { label: 'Coletando detalhes e fotos' },
     { label: 'Analisando concorrentes da região' },
-    { label: cKey ? 'Gerando diagnóstico com IA' : 'Calculando score de saúde' },
+    { label: 'Gerando diagnóstico com IA e calculando score de saúde' },
     { label: 'Montando relatório completo' }
   ];
 
@@ -731,7 +690,6 @@ async function doSearch() {
 
     biz = detailData.result;
     biz.place_id = place_id;
-    biz.apiKey = gKey;
     biz.fetchedAt = new Date().toISOString();
     biz.lat = detailData.result.geometry?.location?.lat;
     biz.lng = detailData.result.geometry?.location?.lng;
@@ -758,9 +716,7 @@ async function doSearch() {
     updateStep(steps, 3);
 
     APP.aiText = '';
-    if (cKey) {
-      await runAI(cKey, biz);
-    }
+    await runAI(biz);
 
     updateStep(steps, 4);
 
@@ -790,7 +746,7 @@ function showSearchError(msg) {
 /* ===========================
    AI ANALYSIS
    =========================== */
-async function runAI(cKey, biz) {
+async function runAI(biz) {
   const reviews = (biz.reviews || []).slice(0, 5).map(r => \`\${r.rating}★: \${(r.text || '').slice(0, 120)}\`).join('\\n');
   const prompt = \`Você é especialista em Google Business Profile e Local SEO. Analise este negócio e responda em JSON exato:
 
