@@ -712,18 +712,18 @@ async function doSearch() {
     let biz = null;
 
     // Text search
-    const searchUrl = \`https://maps.googleapis.com/maps/api/place/textsearch/json?query=\${query}&key=\${gKey}&language=pt-BR\`;
+    const searchUrl = `/api/places?action=search&query=${query}`;
     let searchRes;
     try { searchRes = await fetch(searchUrl); } catch(e) { throw new Error('Erro de rede ao acessar Google Places API. Verifique sua chave e permissões CORS.'); }
     const searchData = await searchRes.json();
     if (searchData.status === 'REQUEST_DENIED') throw new Error('API Key inválida ou sem permissão. Ative a Places API no Google Cloud Console.');
-    if (!searchData.results?.length) throw new Error(\`Nenhum resultado para "\${name}"\${city ? ' em ' + city : ''}. Tente variações do nome.\`);
+    if (!searchData.results?.length) throw new Error(`Nenhum resultado para "${name}"${city ? ' em ' + city : ''}. Tente variações do nome.`);
 
     updateStep(steps, 1);
 
     const place_id = searchData.results[0].place_id;
     const fields = 'name,formatted_address,formatted_phone_number,website,rating,user_ratings_total,opening_hours,photos,reviews,types,business_status,price_level,editorial_summary,geometry,url';
-    const detailUrl = \`https://maps.googleapis.com/maps/api/place/details/json?place_id=\${place_id}&fields=\${fields}&key=\${gKey}&language=pt-BR\`;
+    const detailUrl = `/api/places?action=details&place_id=${place_id}`;
     const detailRes = await fetch(detailUrl);
     const detailData = await detailRes.json();
 
@@ -741,7 +741,7 @@ async function doSearch() {
     // Load nearby competitors
     if (biz.lat && biz.lng) {
       const type = biz.types?.[0] || 'establishment';
-      const nearUrl = \`https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=\${biz.lat},\${biz.lng}&radius=2000&type=\${type}&key=\${gKey}&language=pt-BR\`;
+      const nearUrl = `/api/places?action=nearby&lat=${biz.lat}&lng=${biz.lng}&type=${type}&radius=2000`;
       try {
         const nearRes = await fetch(nearUrl);
         const nearData = await nearRes.json();
@@ -818,10 +818,10 @@ Retorne JSON válido (sem markdown):
 }\`;
 
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', {
+    const res = await fetch('/api/ai', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': cKey, 'anthropic-version': '2023-06-01', 'anthropic-dangerous-direct-browser-access': 'true' },
-      body: JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-3-5-sonnet-20241022', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
     });
     const data = await res.json();
     if (data.content?.[0]?.text) {
