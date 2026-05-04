@@ -37,9 +37,13 @@ export async function onRequest(context) {
     } else if (action === 'nearby') {
       const lat = url.searchParams.get('lat');
       const lng = url.searchParams.get('lng');
-      const type = url.searchParams.get('type') || 'establishment';
+      const type = url.searchParams.get('type') || '';
+      const keyword = url.searchParams.get('keyword') || '';
       const radius = url.searchParams.get('radius') || '2000';
-      googleUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?location=${lat},${lng}&radius=${radius}&type=${type}&key=${GOOGLE_KEY}&language=pt-BR`;
+      let params = `location=${lat},${lng}&radius=${radius}&key=${GOOGLE_KEY}&language=pt-BR`;
+      if (type) params += `&type=${type}`;
+      if (keyword) params += `&keyword=${encodeURIComponent(keyword)}`;
+      googleUrl = `https://maps.googleapis.com/maps/api/place/nearbysearch/json?${params}`;
 
     } else if (action === 'photo') {
       const ref = url.searchParams.get('ref');

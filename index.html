@@ -299,19 +299,19 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
     </div>
     <div class="nav-item" onclick="goPage('reviews')" data-page="reviews">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
-      Avaliações
+      Reputação & IA
     </div>
     <div class="nav-item" onclick="goPage('competitors')" data-page="competitors">
       <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
       Concorrentes
     </div>
-    <div class="nav-item" onclick="goPage('insights')" data-page="insights">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
-      Insights
+    <div class="nav-item" onclick="goPage('heatmap')" data-page="heatmap">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/></svg>
+      Mapa de Calor SEO
     </div>
     <div class="nav-item" onclick="goPage('history')" data-page="history">
-      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M13 3a9 9 0 00-9 9H1l3.89 3.89.07.14L9 12H6c0-3.87 3.13-7 7-7s7 3.13 7 7-3.13 7-7 7c-1.93 0-3.68-.79-4.94-2.06l-1.42 1.42A8.954 8.954 0 0013 21a9 9 0 000-18zm-1 5v5l4.28 2.54.72-1.21-3.5-2.08V8H12z"/></svg>
-      Histórico
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg>
+      Antes x Depois
     </div>
 
     <div class="sidebar-section">Relatórios</div>
@@ -413,14 +413,14 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
             <div style="font-size:11px;color:var(--text2)">Gere propostas profissionais com sua marca e logo em PDF.</div>
           </div>
           <div class="card" style="padding:14px">
-            <div style="font-size:18px;margin-bottom:6px">🤖</div>
-            <div style="font-size:12px;font-weight:700;margin-bottom:4px">Diagnóstico com IA</div>
-            <div style="font-size:11px;color:var(--text2)">Claude analisa o perfil e sugere ações concretas de melhoria.</div>
+            <div style="font-size:18px;margin-bottom:6px">🗺️</div>
+            <div style="font-size:12px;font-weight:700;margin-bottom:4px">Mapa de Calor SEO</div>
+            <div style="font-size:11px;color:var(--text2)">Veja como o negócio rankeia em diferentes pontos da cidade (Grid Search).</div>
           </div>
           <div class="card" style="padding:14px">
-            <div style="font-size:18px;margin-bottom:6px">👥</div>
-            <div style="font-size:12px;font-weight:700;margin-bottom:4px">Gestão de Clientes</div>
-            <div style="font-size:11px;color:var(--text2)">Salve múltiplos clientes e acesse análises anteriores rapidamente.</div>
+            <div style="font-size:18px;margin-bottom:6px">📈</div>
+            <div style="font-size:12px;font-weight:700;margin-bottom:4px">Antes x Depois</div>
+            <div style="font-size:11px;color:var(--text2)">Acompanhe a evolução rigorosa do cliente ao longo dos meses.</div>
           </div>
         </div>
       </div>
@@ -468,7 +468,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
     <!-- ===== PAGE: REVIEWS ===== -->
     <div class="page" id="page-reviews">
       <div class="section-header">
-        <div><div class="page-title">Análise de Avaliações</div><div class="page-sub">Métricas, gráficos e palavras-chave das avaliações públicas</div></div>
+        <div><div class="page-title">Reputação & Análise IA</div><div class="page-sub">Inteligência Artificial analisando a percepção do cliente</div></div>
         <button class="btn btn-outline btn-sm" onclick="generatePDF()">⬇ PDF</button>
       </div>
       <div class="grid-2 mb-2">
@@ -490,19 +490,22 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
       </div>
     </div>
 
-    <!-- ===== PAGE: INSIGHTS ===== -->
-    <div class="page" id="page-insights">
+    <!-- ===== PAGE: HEATMAP ===== -->
+    <div class="page" id="page-heatmap">
       <div class="section-header">
-        <div><div class="page-title">Insights & Métricas</div><div class="page-sub">Análise de desempenho e projeções</div></div>
+        <div><div class="page-title">Mapa de Calor SEO (Grid Tracking)</div><div class="page-sub">Rastreamento de ranking em múltiplos pontos ao redor da empresa</div></div>
+        <button class="btn btn-primary btn-sm" onclick="generateHeatmap()">🚀 Gerar Mapa de Calor</button>
       </div>
-      <div id="ins_content"></div>
+      <div id="heatmap_content">
+        <div class="empty-state"><div class="empty-icon">📍</div><div class="empty-title">Mapa de Calor não gerado</div><div>Clique no botão acima para simular buscas de clientes em um raio de 3km.</div></div>
+      </div>
     </div>
 
     <!-- ===== PAGE: HISTORY ===== -->
     <div class="page" id="page-history">
       <div class="section-header">
-        <div><div class="page-title">Histórico de Evolução</div><div class="page-sub">Rastreamento de melhorias ao longo do tempo</div></div>
-        <button class="btn btn-primary btn-sm" onclick="addHistorySnapshot()">+ Salvar snapshot</button>
+        <div><div class="page-title">Comparativo (Antes x Depois)</div><div class="page-sub">Avaliação rigorosa da evolução do perfil ao longo da gestão</div></div>
+        <button class="btn btn-primary btn-sm" onclick="addHistorySnapshot()">+ Salvar snapshot atual</button>
       </div>
       <div id="hist_content"></div>
     </div>
@@ -618,10 +621,9 @@ function goPage(name) {
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
   document.querySelector('[data-page="' + name + '"]')?.classList.add('active');
-  const titles = { setup:'Início', dashboard:'Dashboard', checklist:'Checklist', reviews:'Avaliações', competitors:'Concorrentes', insights:'Insights', history:'Histórico', proposal:'Proposta', manage:'Clientes', settings:'Config' };
+  const titles = { setup:'Início', dashboard:'Dashboard', checklist:'Checklist', reviews:'Reputação & IA', competitors:'Concorrentes', heatmap:'Mapa de Calor', history:'Antes x Depois', proposal:'Proposta', manage:'Clientes', settings:'Config' };
   document.getElementById('topbarTitle').textContent = 'GBP Pro — ' + (titles[name] || name);
   if (name === 'competitors' && APP.currentBiz && !APP.competitors.length) loadCompetitors();
-  if (name === 'insights') renderInsights();
   if (name === 'history') renderHistory();
   if (name === 'manage') renderManageList();
   if (name === 'proposal') updateProposalPreview();
@@ -797,7 +799,6 @@ function renderAll(biz) {
   renderChecklist(biz, score);
   renderReviews(biz);
   renderCompetitors();
-  renderInsights();
   renderHistory();
 }
 
@@ -937,12 +938,13 @@ function renderChecklist(biz, score) {
     { l:'Telefone cadastrado', ok:!!biz.formatted_phone_number, v:biz.formatted_phone_number||'Não cadastrado', tip:'Aumenta as chamadas diretas do Google Maps.' },
     { l:'Website linkado', ok:!!biz.website, v:biz.website?'Cadastrado':'Não cadastrado', tip:'Redirecionamentos ao site geram conversões.' },
     { l:'Horários de funcionamento', ok:!!biz.opening_hours, v:biz.opening_hours?'Cadastrado':'Não cadastrado', tip:'Usuários verificam horários antes de visitar.' },
-    { l:'Galeria de fotos (≥10)', ok:p>=10, w:p>=3&&p<10, v:p+' foto'+(p!==1?'s':''), tip:'Perfis com +20 fotos têm 2x mais visitas ao site.' },
+    { l:'Galeria de fotos (Rigoroso: ≥30)', ok:p>=30, w:p>=10&&p<30, v:p+' foto'+(p!==1?'s':''), tip:'Perfis líderes na região possuem atualizações constantes de fotos (>30).' },
     { l:'Perfil ativo (não suspenso)', ok:biz.business_status==='OPERATIONAL', v:biz.business_status==='OPERATIONAL'?'Operacional':(biz.business_status||'Desconhecido'), tip:'Perfis suspensos ficam ocultos nos resultados.' },
     { l:'Descrição editorial', ok:!!biz.editorial_summary?.overview, w:!biz.editorial_summary?.overview, v:biz.editorial_summary?.overview?'Disponível':'Não disponível', tip:'Descrição gerada pelo Google aparece em destaque.' },
     { l:'Categoria do negócio', ok:!!(biz.types?.length>0), v:biz.types?biz.types.slice(0,2).join(', ').replace(/_/g,' '):'N/A', tip:'Categorias corretas determinam em quais buscas aparecer.' },
-    { l:'Resposta a avaliações', ok:false, w:true, v:'Não verificável via API', tip:'Responder avaliações aumenta confiança e ranking.' },
-    { l:'Postagens (Google Posts)', ok:false, w:true, v:'Não verificável via API', tip:'Posts mantêm o perfil ativo e engajado.' },
+    { l:'Atualização de Ofertas e Google Posts', ok:false, w:true, v:'Requer verificação manual', tip:'O Google prioriza negócios com postagens nos últimos 7 dias.' },
+    { l:'Adição recente de Vídeos', ok:false, w:true, v:'Requer verificação manual', tip:'Perfis que recebem upload de vídeos têm engajamento muito maior.' },
+    { l:'Interação/Resposta a avaliações', ok:false, w:true, v:'Requer verificação manual', tip:'É obrigatório responder a TODOS os reviews (positivos e negativos).' }
   ];
 
   const okCount = checks.filter(c=>c.ok).length;
@@ -1118,69 +1120,85 @@ function renderCompetitors() {
 
 async function loadCompetitors() {
   if (APP.competitors.length) { renderCompetitors(); return; }
-  document.getElementById('comp_content').innerHTML = `<div class="empty-state"><div class="spinner" style="margin:0 auto 12px"></div><div>Carregando concorrentes...</div></div>`;
+  document.getElementById('comp_content').innerHTML = `<div class="empty-state"><div class="spinner" style="margin:0 auto 12px"></div><div>Buscando rigorosamente os verdadeiros concorrentes na área...</div></div>`;
+  const biz = APP.currentBiz;
+  if (!biz || !biz.lat) return;
+  const keyword = biz.types?.[0]?.replace(/_/g, ' ') || 'empresa';
+  const nearUrl = `/api/places?action=nearby&lat=${biz.lat}&lng=${biz.lng}&keyword=${encodeURIComponent(keyword)}&radius=3000`;
+  try {
+    const nearRes = await fetch(nearUrl);
+    const nearData = await nearRes.json();
+    if (nearData.results) {
+      APP.competitors = nearData.results.filter(r => r.place_id !== biz.place_id).slice(0, 8).map(r => ({
+        name: r.name, rating: r.rating || 0, total: r.user_ratings_total || 0,
+        address: r.vicinity, place_id: r.place_id, types: r.types, status: r.business_status
+      }));
+      renderCompetitors();
+    }
+  } catch(e) {
+    APP.competitors = [];
+    renderCompetitors();
+  }
 }
 
 /* ===========================
-   INSIGHTS
+   HEATMAP
    =========================== */
-function renderInsights() {
-  if (!APP.currentBiz) { document.getElementById('ins_content').innerHTML = '<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-title">Nenhum negócio analisado</div><div>Faça uma busca primeiro para ver os insights.</div></div>'; return; }
+async function generateHeatmap() {
+  if (!APP.currentBiz) return alert('Analise um negócio primeiro.');
   const biz = APP.currentBiz;
-  const r = biz.rating||0, t = biz.user_ratings_total||0, p = biz.photos?.length||0;
+  if (!biz.lat || !biz.lng) return alert('Coordenadas do negócio não encontradas.');
+  
+  const el = document.getElementById('heatmap_content');
+  el.innerHTML = `<div class="empty-state"><div class="spinner" style="margin:0 auto 12px"></div><div class="empty-title">Gerando Mapa de Calor SEO...</div><div style="font-size:13px;color:var(--text2);margin-top:8px">Simulando buscas nos arredores (Grid Search). Isso pode levar alguns segundos.</div></div>`;
+  
+  const keyword = biz.types?.[0]?.replace(/_/g, ' ') || biz.name;
+  
+  // 3x3 Grid (center is biz.lat, biz.lng)
+  const offset = 0.01; // Approx 1km step
+  const gridPoints = [
+    {r:0, c:0, lat: biz.lat + offset, lng: biz.lng - offset}, {r:0, c:1, lat: biz.lat + offset, lng: biz.lng}, {r:0, c:2, lat: biz.lat + offset, lng: biz.lng + offset},
+    {r:1, c:0, lat: biz.lat, lng: biz.lng - offset},          {r:1, c:1, lat: biz.lat, lng: biz.lng},          {r:1, c:2, lat: biz.lat, lng: biz.lng + offset},
+    {r:2, c:0, lat: biz.lat - offset, lng: biz.lng - offset}, {r:2, c:1, lat: biz.lat - offset, lng: biz.lng}, {r:2, c:2, lat: biz.lat - offset, lng: biz.lng + offset}
+  ];
 
-  // Simulated monthly trend data
-  const months = ['Ago','Set','Out','Nov','Dez','Jan'];
-  const baseLine = t;
-  const trendData = months.map((_,i) => Math.max(0, Math.round(baseLine * (0.7 + i*0.06) + (Math.random()-0.5)*10)));
-  trendData[5] = t;
+  const resultsGrid = Array(9).fill(null);
 
-  document.getElementById('ins_content').innerHTML = `
-    <div class="grid-4 mb-2">
-      <div class="metric-card"><div class="metric-label">Impressões estimadas/mês</div><div class="metric-value metric-green">${(t*12).toLocaleString('pt-BR')}</div><div class="metric-sub">baseado no volume</div></div>
-      <div class="metric-card"><div class="metric-label">Taxa de engajamento</div><div class="metric-value metric-amber">${r>0?(r/5*100).toFixed(0):'0'}%</div><div class="metric-sub">baseado na nota</div></div>
-      <div class="metric-card"><div class="metric-label">Potencial de crescimento</div><div class="metric-value" style="color:var(--purple)">${r>0&&r<4.5?'Alto':r>=4.5?'Médio':'Muito alto'}</div><div class="metric-sub">com otimização</div></div>
-      <div class="metric-card"><div class="metric-label">Score de completude</div><div class="metric-value metric-green">${calcScore(biz)}/100</div><div class="metric-sub">perfil público</div></div>
-    </div>
-    <div class="grid-2 mb-2">
-      <div class="card">
-        <div class="card-title mb-2"><span class="card-title-dot" style="background:var(--green)"></span>Evolução estimada de avaliações</div>
-        <div style="position:relative;height:180px"><canvas id="insChart1" role="img" aria-label="Gráfico de evolução de avaliações nos últimos 6 meses">Evolução de avaliações.</canvas></div>
-      </div>
-      <div class="card">
-        <div class="card-title mb-2"><span class="card-title-dot" style="background:var(--blue)"></span>Projeção com gestão ativa (6 meses)</div>
-        <div style="position:relative;height:180px"><canvas id="insChart2" role="img" aria-label="Projeção de crescimento com gestão ativa">Projeção de crescimento.</canvas></div>
-      </div>
-    </div>
-    <div class="card">
-      <div class="card-title mb-2"><span class="card-title-dot" style="background:var(--amber)"></span>Análise de completude do perfil</div>
-      <div style="display:flex;flex-direction:column;gap:10px">
-        ${[
-          { l:'Informações básicas', v: (!!biz.formatted_phone_number + !!biz.website + !!biz.opening_hours + !!biz.formatted_address), max:4, col:'#1D9E75' },
-          { l:'Mídia e fotos', v: Math.min(p,20), max:20, col:'#BA7517' },
-          { l:'Engajamento (avaliações)', v: Math.min(t,100), max:100, col:'#7F77DD' },
-          { l:'Qualidade (nota)', v: Math.round(r/5*100), max:100, col:'#378ADD' },
-        ].map(item => `
-          <div>
-            <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px"><span>${item.l}</span><span style="font-weight:600;color:${item.col}">${item.l==='Informações básicas'?item.v+'/4':item.v+'%'}</span></div>
-            <div style="height:8px;background:var(--bg3);border-radius:4px;overflow:hidden"><div style="height:100%;width:${(item.v/item.max*100).toFixed(0)}%;background:${item.col};border-radius:4px;transition:width .5s"></div></div>
-          </div>
-        `).join('')}
-      </div>
-    </div>
+  await Promise.all(gridPoints.map(async (pt, i) => {
+    try {
+      const res = await fetch(`/api/places?action=nearby&lat=${pt.lat}&lng=${pt.lng}&keyword=${encodeURIComponent(keyword)}&radius=2000`);
+      const data = await res.json();
+      if (data.results) {
+        const sorted = data.results.sort((a,b) => (b.rating||0) - (a.rating||0)); // Maps sort logic approx
+        let rank = sorted.findIndex(r => r.place_id === biz.place_id);
+        resultsGrid[i] = rank === -1 ? '20+' : rank + 1;
+      } else {
+        resultsGrid[i] = 'N/A';
+      }
+    } catch(e) {
+      resultsGrid[i] = 'Erro';
+    }
+  }));
+
+  let html = `<div class="card-title mb-2"><span class="card-title-dot" style="background:var(--green)"></span>Grid de Posicionamento Local (Busca: "${keyword}")</div>
+    <div style="margin-bottom:16px;font-size:13px;color:var(--text2);line-height:1.5">O mapa abaixo simula clientes buscando pelo serviço em 9 pontos diferentes ao redor do negócio (raio de 1-2km). O número indica a posição em que a empresa aparece. <strong style="color:var(--green)">1 a 3 é excelente</strong> (Local Pack). <strong style="color:var(--red)">Maior que 3 significa perda de clientes.</strong></div>
+    <div style="display:grid;grid-template-columns:repeat(3, 1fr);gap:15px;max-width:400px;margin:0 auto;background:#f5f5f3;border-radius:12px;padding:30px;border:1px solid var(--border);position:relative">
+      <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:30px;height:30px;background:rgba(0,0,0,0.05);border-radius:50%;z-index:0;display:flex;align-items:center;justify-content:center"><span style="font-size:16px">🎯</span></div>
   `;
 
-  setTimeout(() => {
-    const c1 = document.getElementById('insChart1');
-    if (c1) new Chart(c1, { type:'line', data:{ labels:months, datasets:[{label:'Avaliações',data:trendData,borderColor:'#1D9E75',backgroundColor:'rgba(29,158,117,.1)',fill:true,tension:.4,pointRadius:4}] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:false}} } });
+  resultsGrid.forEach(rank => {
+    const val = parseInt(rank) || 99;
+    let bg = val <= 3 ? '#1D9E75' : val <= 10 ? '#BA7517' : '#E24B4A';
+    if (rank === 'N/A' || rank === 'Erro') bg = '#999';
+    html += `<div style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;background:${bg};color:#fff;font-size:24px;font-weight:700;border-radius:50%;box-shadow:0 4px 10px rgba(0,0,0,0.15);border:3px solid #fff">${rank}</div>`;
+  });
 
-    const c2 = document.getElementById('insChart2');
-    if (c2) {
-      const curr = t;
-      const proj = months.map((_,i) => Math.round(curr * (1 + (i+1)*0.18)));
-      new Chart(c2, { type:'bar', data:{ labels:['Atual','Mês 1','Mês 2','Mês 3','Mês 4','Mês 5','Mês 6'], datasets:[{label:'Sem gestão',data:[curr,...months.slice(0,6).map((_,i)=>Math.round(curr*(1+i*0.05)))],backgroundColor:'rgba(200,200,200,.5)',borderRadius:3},{label:'Com gestão',data:[curr,...proj],backgroundColor:'rgba(29,158,117,.7)',borderRadius:3}] }, options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{y:{beginAtZero:false,grid:{color:'rgba(0,0,0,.05)'}},x:{grid:{display:false}}} } });
-    }
-  }, 100);
+  html += `</div>
+    <div style="margin-top:20px;background:var(--red-light);color:#791F1F;padding:14px;border-radius:8px;font-size:13px">
+      <strong>Diagnóstico do Heatmap:</strong> Se há muitos pontos vermelhos, o negócio está "invisível" para clientes que estão a apenas 1km de distância. Estratégias de Check-ins, resposta rápida a reviews e postagens semanais ajudam a expandir esse raio verde!
+    </div>
+  `;
+  el.innerHTML = html;
 }
 
 /* ===========================
