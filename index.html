@@ -514,7 +514,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
     <div class="page" id="page-competitors">
       <div class="section-header">
         <div><div class="page-title">Análise de Concorrentes</div><div class="page-sub">Comparativo com negócios similares na região</div></div>
-        <button class="btn btn-outline btn-sm" onclick="loadCompetitors()">🔄 Atualizar</button>
+        <button class="btn btn-outline btn-sm" onclick="APP.competitors=[]; loadCompetitors()">🔄 Atualizar</button>
       </div>
       <div id="comp_content">
         <div class="empty-state"><div class="empty-icon">🏆</div><div class="empty-title">Carregando concorrentes...</div><div>Analisando a região do negócio</div></div>
@@ -526,7 +526,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
       <div class="section-header" style="flex-wrap:wrap;gap:15px">
         <div><div class="page-title">Mapa de Calor SEO (Grid Tracking)</div><div class="page-sub">Rastreamento de ranking em múltiplos pontos ao redor da empresa</div></div>
         <div style="display:flex;gap:10px;align-items:center">
-          <input type="text" id="heatmap_keyword" placeholder="Qual palavra-chave buscar?" class="input" style="width:250px">
+          <input type="text" id="heatmap_keyword" placeholder="Qual palavra-chave buscar?" class="input-field" style="width:250px">
           <button class="btn btn-primary btn-sm" onclick="generateHeatmap()">🚀 Gerar Mapa</button>
         </div>
       </div>
@@ -638,6 +638,13 @@ let APP = {
 window.onload = () => {
   renderManageList();
   document.addEventListener('keydown', e => { if (e.key === 'Enter' && document.activeElement.id.startsWith('s_')) doSearch(); });
+  // Restore saved proposal agency data
+  const agData = JSON.parse(localStorage.getItem('gbp_agency') || '{}');
+  if (agData.name) document.getElementById('ag_name').value = agData.name;
+  if (agData.contact) document.getElementById('ag_contact').value = agData.contact;
+  if (agData.email) document.getElementById('ag_email').value = agData.email;
+  if (agData.phone) document.getElementById('ag_phone').value = agData.phone;
+  if (agData.price) document.getElementById('ag_price').value = agData.price;
 
   const segSelect = document.getElementById('s_bizSegment');
   const subWrap = document.getElementById('subsegment_wrapper');
@@ -761,20 +768,42 @@ const CATEGORY_MAP = {
 };
 
 function detectCategoryByName(name) {
-  const n = (name || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-  if (/pizza|burg|restaurante|sushi|churrasc|padaria|doces|cafe|lanch|acai|sorvete/.test(n)) return 'comida';
-  if (/oficina|pneu|lava.?jato|auto.?pe|mecanica|veiculo|carro|moto|caminhao|implemento|trator/.test(n)) return 'automoveis';
+  const n = (name || '').toLowerCase().normalize('NFD').replace(/\p{Mn}/gu, '');
+  if (/pizza|burg|sushi|churrasc|padaria|confeit|doces|cafeteria|lanch|acai|sorvete|restaurante/.test(n)) return 'comida';
+  if (/oficina|pneu|lava.jato|mecanica|veiculo|carro|caminhao|implemento|trator/.test(n)) return 'automoveis';
   if (/clinica|medic|odonto|dentist|farmacia|saude|hospital/.test(n)) return 'saude';
   if (/salao|cabelei|beleza|estetica|unhas|manicure|spa|barbearia/.test(n)) return 'beleza';
-  if (/loja|otica|supermercado|roupa|calcado|eletronic|material|construcao|mercado/.test(n)) return 'varejo';
+  if (/otica|supermercado|roupa|calcado|eletronic|material.de.construcao|mercado/.test(n)) return 'varejo';
   if (/advogad|contabil|corretor|engenharia|seguros|assistencia|consultoria/.test(n)) return 'servicos';
   if (/escola|curso|colegio|faculdade|universidade|treinamento|idiomas/.test(n)) return 'educacao';
   if (/hotel|pousada|resort|hostel|motel/.test(n)) return 'hospedagem';
   if (/cinema|teatro|boliche|clube|festa/.test(n)) return 'entretenimento';
   if (/imobiliaria|imoveis|construtora/.test(n)) return 'imoveis';
-  if (/industria|fabrica|usinagem|distribuidora|ferramentas|pecas/.test(n)) return 'industria';
+  if (/industria|fabrica|usinagem|distribuidora|ferramentas/.test(n)) return 'industria';
   if (/pet|veterinar/.test(n)) return 'pet';
-  if (/software|tecnologia|sistemas|ti|informatica/.test(n)) return 'tecnologia';
+  if (/software|tecnologia|sistemas|informatica/.test(n)) return 'tecnologia';
+  return null;
+}
+
+function detectSubcategory(name, macroKey) {
+  const n = (name || '').toLowerCase().normalize('NFD').replace(/\p{Mn}/gu, '');
+  const subs = CATEGORY_MAP[macroKey]?.subs;
+  if (!subs) return null;
+  const patterns = {
+    comida:     { acai:'acai|sorvete|frozen|gelato|yogurt', pizzaria:'pizza', sushi:'sushi|japones|temaki|ramen', churrascaria:'churrasc|espeto|steakhouse', hamburgueria:'hamburguer|burger|burguer|lanchon', cafe:'cafeteria|padaria|confeit|doces', restaurante:'.' },
+    automoveis: { pneus:'pneu|borracha', lavajato:'lava.jato|lavagem', implementos:'implemento|rodoviario|trator', concessionaria:'concession|revendedor', oficina:'.' },
+    saude:      { dentista:'dentist|odonto|dental', farmacia:'farmacia|drogaria', psicologia:'psico|terapeut|mental', clinica:'.' },
+    beleza:     { barbearia:'barbe', estetica:'estetica|spa|massagem', manicure:'manicure|pedicure|unhas|nail', salao:'.' },
+    varejo:     { supermercado:'supermercado|mercado', eletronicos:'eletron|celular|informatica', construcao:'material|tinta|azulejo', roupas:'.' },
+    servicos:   { advogado:'advogad', contabilidade:'contabil|contador', seguros:'seguro|corretora' },
+    imoveis:    { construtora:'construtora', imobiliaria:'.' },
+    pet:        { veterinario:'veterinar', petshop:'.' }
+  };
+  const mp = patterns[macroKey];
+  if (!mp) return null;
+  for (const [sub, pat] of Object.entries(mp)) {
+    if (subs[sub] && new RegExp(pat).test(n)) return sub;
+  }
   return null;
 }
 
@@ -922,26 +951,56 @@ async function doSearch() {
     // Detectar segmento: usar seleção do usuário ou auto-detectar pelos tipos do Google
     const detectedCategory = segmentSel || detectCategory(biz.types || [], biz.name);
     APP.segment = detectedCategory;
-    APP.subsegment = subSegment;
+    // Auto-detectar subnicho se não selecionado manualmente
+    let resolvedSubSegment = subSegment;
+    if (!resolvedSubSegment && detectedCategory) {
+      resolvedSubSegment = detectSubcategory(biz.name, detectedCategory);
+    }
+    APP.subsegment = resolvedSubSegment;
     const catConfig = CATEGORY_MAP[detectedCategory];
     const searchRadius = catConfig?.radius || 2000;
 
-    // Load nearby competitors — filtra pelo mesmo nicho
+    // Load nearby competitors com keyword do subnicho para máxima precisão
+    APP.competitors = [];
     if (biz.lat && biz.lng) {
-      // Usar keyword do nicho para busca mais precisa
-      const nicheKeyword = catConfig
-        ? catConfig.primary[0].replace(/_/g, ' ')
-        : (biz.types?.filter(t => !['establishment','point_of_interest','store','food','health'].includes(t))[0] || '').replace(/_/g,' ');
+      const subConfig = resolvedSubSegment && catConfig?.subs?.[resolvedSubSegment]
+        ? catConfig.subs[resolvedSubSegment] : null;
+
+      let nicheKeyword = '';
+      if (subConfig) {
+        nicheKeyword = subConfig.keyword;
+      } else if (resolvedSubSegment) {
+        nicheKeyword = resolvedSubSegment;
+      } else if (catConfig?.primary?.length > 0) {
+        nicheKeyword = catConfig.primary[0].replace(/_/g, ' ');
+      } else {
+        const vt = (biz.types || []).filter(t => !GENERIC_TYPES.has(t));
+        nicheKeyword = vt[0]?.replace(/_/g, ' ') || biz.name.split(' ')[0];
+      }
+
       const nearUrl = `/api/places?action=nearby&lat=${biz.lat}&lng=${biz.lng}&keyword=${encodeURIComponent(nicheKeyword)}&radius=${searchRadius}`;
       try {
         const nearRes = await fetch(nearUrl);
         const nearData = await nearRes.json();
         if (nearData.results) {
-          const filtered = filterByCategory(nearData.results, detectedCategory, place_id);
-          APP.competitors = filtered.slice(0, 10).map(r => ({
+          let validRivals = nearData.results.filter(r => r.place_id !== place_id && r.business_status === 'OPERATIONAL');
+          if (subConfig) {
+            validRivals = validRivals.filter(r => {
+              const types = r.types || [];
+              if (types.some(t => subConfig.reject.includes(t))) return false;
+              return types.some(t => subConfig.primary.includes(t) || subConfig.secondary?.includes(t));
+            });
+          } else if (catConfig) {
+            validRivals = validRivals.filter(r => {
+              const types = r.types || [];
+              if (types.some(t => catConfig.reject.includes(t))) return false;
+              if (resolvedSubSegment) return true;
+              return types.some(t => catConfig.primary.includes(t) || catConfig.secondary?.includes(t));
+            });
+          }
+          APP.competitors = validRivals.slice(0, catConfig?.top || 10).map(r => ({
             name: r.name, rating: r.rating || 0, total: r.user_ratings_total || 0,
-            address: r.vicinity, place_id: r.place_id,
-            types: r.types, status: r.business_status
+            address: r.vicinity, place_id: r.place_id, types: r.types, status: r.business_status
           }));
         }
       } catch(e) { APP.competitors = []; }
@@ -1102,7 +1161,7 @@ function calcScore(biz) {
   if (biz.business_status && biz.business_status !== 'OPERATIONAL') s -= 50;
   if (t === 0) s -= 30;
 
-  return Math.max(49, Math.min(100, Math.round(s)));
+  return Math.max(0, Math.min(100, Math.round(s)));
 }
 
 function scoreColor(s) { return s >= 80 ? '#1D9E75' : s >= 60 ? '#BA7517' : '#E24B4A'; }
@@ -1452,7 +1511,7 @@ function renderCompetitors() {
   const mainBiz = allBiz.find(b=>b.isMain);
 
   document.getElementById('comp_content').innerHTML = `
-    ${segLabel?`<div style="margin-bottom:12px;font-size:12px;color:var(--text2)">Segmento detectado: <strong style="color:var(--green)">${segLabel}</strong> — concorrentes filtrados pelo mesmo nicho</div>`:''}
+    ${(segLabel||APP.subsegment)?`<div style="margin-bottom:12px;font-size:12px;color:var(--text2)">Segmento: <strong style="color:var(--green)">${segLabel}</strong>${APP.subsegment&&CATEGORY_MAP[APP.segment]?.subs?.[APP.subsegment]?` › <strong style="color:var(--green)">${CATEGORY_MAP[APP.segment].subs[APP.subsegment].name}</strong>`:APP.subsegment?` › <strong style="color:var(--green)">${APP.subsegment}</strong>`:''} — concorrentes filtrados pelo mesmo nicho</div>`:''}
     <div class="grid-4 mb-2">
       <div class="metric-card"><div class="metric-label">Posição no ranking</div><div class="metric-value" style="color:${mainRank<=3?'#1D9E75':'#BA7517'}">${mainRank}º</div><div class="metric-sub">de ${allBiz.length} negócios</div></div>
       <div class="metric-card"><div class="metric-label">Nota média do nicho</div><div class="metric-value" style="color:var(--amber)">${avgRating}</div><div class="metric-sub">do segmento</div></div>
@@ -1720,6 +1779,8 @@ function updateProposalPreview() {
   const email = document.getElementById('ag_email').value.trim() || 'email@agencia.com';
   const phone = document.getElementById('ag_phone').value.trim() || '(11) 99999-9999';
   const price = document.getElementById('ag_price').value.trim();
+  // Persist agency data
+  if (agency !== 'Sua Agência') localStorage.setItem('gbp_agency', JSON.stringify({ name: document.getElementById('ag_name').value, contact: document.getElementById('ag_contact').value, email: document.getElementById('ag_email').value, phone: document.getElementById('ag_phone').value, price: document.getElementById('ag_price').value }));
   const msg = document.getElementById('ag_msg').value.trim();
   const biz = APP.currentBiz;
   const ai = APP.aiText;
@@ -1775,7 +1836,6 @@ function updateProposalPreview() {
 }
 
 async function generateAIProposal() {
-  if (!APP.cfg.claude) return alert('Configure a Claude API Key em Configurações primeiro.');
   if (!APP.currentBiz) return alert('Analise um negócio primeiro.');
   const btn = document.querySelector('#propAiBtn button');
   btn.disabled = true; btn.textContent = '⏳ Gerando...';
@@ -1783,9 +1843,14 @@ async function generateAIProposal() {
   const score = calcScore(biz);
   const prompt = `Escreva um parágrafo curto (3-4 linhas) para uma proposta comercial de gestão de Google Meu Negócio. Endereçado ao proprietário de "${biz.name}" (${(biz.types||[]).slice(0,2).join(', ').replace(/_/g,' ')}). O perfil tem nota ${biz.rating||'N/A'} e ${biz.user_ratings_total||0} avaliações. Score de saúde: ${score}/100. Seja direto, profissional, focado nos benefícios concretos. Primeira pessoa como especialista. Português brasileiro. Sem markdown.`;
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages', { method:'POST', headers:{'Content-Type':'application/json','x-api-key':APP.cfg.claude,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'}, body:JSON.stringify({ model:'claude-sonnet-4-20250514', max_tokens:300, messages:[{role:'user',content:prompt}] }) });
+    const res = await fetch('/api/ai', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ model: 'claude-3-5-sonnet-20241022', max_tokens: 300, messages: [{ role: 'user', content: prompt }] })
+    });
     const data = await res.json();
     if (data.content?.[0]?.text) { document.getElementById('ag_msg').value = data.content[0].text; updateProposalPreview(); }
+    else throw new Error(data.error || 'Resposta vazia da IA');
   } catch(e) { alert('Erro ao gerar texto: ' + e.message); }
   btn.disabled = false; btn.textContent = '🤖 Gerar texto com IA';
 }
@@ -2134,8 +2199,10 @@ function loadSavedClient(place_id) {
 
 function clearAllData() {
   if (!confirm('Apagar todos os clientes e histórico salvos?')) return;
-  localStorage.removeItem('gbp_history'); localStorage.removeItem('gbp_clients');
+  localStorage.removeItem('gbp_history');
+  localStorage.removeItem('gbp_clients');
   APP.history = []; APP.clients = [];
+  APP.currentBiz = null; APP.competitors = []; APP.segment = null; APP.subsegment = null;
   renderManageList(); renderHistory();
   alert('Dados apagados.');
 }
