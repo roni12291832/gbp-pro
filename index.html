@@ -986,13 +986,14 @@ function calcScore(biz) {
   if (r >= 4.8) s += 20;
   else if (r >= 4.5) s += 14;
   else if (r >= 4.0) s += 7;
-  else if (r > 0) s -= 5;
+  else if (r >= 3.5) s += 2;
+  else if (r > 0 && r < 3.5) s -= 3;
 
   // VOLUME DE AVALIAÇÕES (max 15) — avalia o tamanho da reputação
   if (t >= 500) s += 15;
   else if (t >= 150) s += 7;
-  if (t > 0 && t < 150) s -= 10;
-  if (t === 0) s -= 15;
+  if (t > 0 && t < 150) s -= 5;
+  if (t === 0) s -= 10;
 
   // RECÊNCIA DAS AVALIAÇÕES (max 25) — critério mais importante
   const rev15 = reviews.filter(rv => (now - rv.time) <= 15 * 86400).length;
@@ -1006,8 +1007,8 @@ function calcScore(biz) {
   if (rev15 >= 8)               s += 25;
   else if (rev15 >= 3)          s += 15;
   
-  if (mostRecentDays > 90)      s -= 23;
-  else if (mostRecentDays > 30) s -= 15;
+  if (mostRecentDays > 90)      s -= 15;
+  else if (mostRecentDays > 30) s -= 10;
 
   // RESPOSTAS A AVALIAÇÕES (max 12)
   const withReply = reviews.filter(rv => rv.owner_reply?.text).length;
@@ -1016,13 +1017,13 @@ function calcScore(biz) {
     if (replyRate >= 0.8)      s += 12;
     else if (replyRate >= 0.5) s += 7;
     else if (replyRate >= 0.2) s += 3;
-    else                       s -= 8;
+    else                       s -= 5;
   }
 
   // FOTOS (max 10) — Mídia atualizada engaja mais cliques
   if (p >= 20) s += 10;
-  if (p > 0 && p < 20) s -= 7;
-  if (p === 0) s -= 10;
+  if (p > 0 && p < 20) s -= 5;
+  if (p === 0) s -= 8;
 
   // COMPLETUDE DO PERFIL (max 18)
   if (biz.formatted_phone_number)       s += 6;
@@ -1042,16 +1043,16 @@ function calcScore(biz) {
   if (p < 20)                      hardFails++;
   if (rev30 === 0)                  hardFails++;
   if (reviews.length > 0 && replyRate < 0.2) hardFails++;
-  if (hardFails >= 6) s -= 18;
-  else if (hardFails >= 5) s -= 12;
-  else if (hardFails >= 4) s -= 7;
+  if (hardFails >= 6) s -= 12;
+  else if (hardFails >= 5) s -= 8;
+  else if (hardFails >= 4) s -= 5;
   else if (hardFails >= 3) s -= 3;
 
-  return Math.max(0, Math.min(100, s));
+  return Math.max(49, Math.min(100, Math.round(s)));
 }
 
-function scoreColor(s) { return s >= 70 ? '#1D9E75' : s >= 45 ? '#BA7517' : '#E24B4A'; }
-function scoreLabel(s) { return s >= 75 ? 'Boa saúde' : s >= 45 ? 'Atenção' : 'Crítico'; }
+function scoreColor(s) { return s >= 80 ? '#1D9E75' : s >= 60 ? '#BA7517' : '#E24B4A'; }
+function scoreLabel(s) { return s >= 80 ? 'Boa saúde' : s >= 60 ? 'Atenção' : 'Crítico'; }
 function stars(n) { let s=''; for(let i=1;i<=5;i++) s += i<=Math.floor(n)?'★':'☆'; return s; }
 
 /* ===========================
