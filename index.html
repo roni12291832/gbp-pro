@@ -378,39 +378,20 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
               <label class="field-label">Segmento <span style="color:var(--text2);font-weight:400;font-size:10px">(opcional)</span></label>
               <select class="input-field" id="s_bizSegment">
                 <option value="">Auto-detectar (Google)</option>
-                <option value="acai">Açaí / Sorveteria</option>
-                <option value="padaria">Padaria / Confeitaria</option>
-                <option value="cafe">Café / Cafeteria</option>
-                <option value="pizzaria">Pizzaria</option>
-                <option value="restaurante">Restaurante</option>
-                <option value="lanchonete">Lanchonete / Fast Food</option>
-                <option value="sushi">Sushi / Japonês</option>
-                <option value="churrascaria">Churrascaria / Steakhouse</option>
-                <option value="bar">Bar / Pub</option>
-                <option value="salao">Salão de Beleza / Cabeleireiro</option>
-                <option value="barbearia">Barbearia</option>
-                <option value="manicure">Manicure / Salão de Unhas</option>
-                <option value="spa">Spa / Massagem</option>
-                <option value="academia">Academia / Fitness</option>
-                <option value="hotel">Hotel / Pousada</option>
-                <option value="clinica">Clínica / Consultório Médico</option>
-                <option value="dentista">Dentista / Odontologia</option>
-                <option value="farmacia">Farmácia / Drogaria</option>
-                <option value="supermercado">Supermercado / Mercado</option>
-                <option value="roupas">Loja de Roupas / Vestuário</option>
-                <option value="eletronicos">Eletrônicos / Informática</option>
-                <option value="imoveis">Imobiliária</option>
-                <option value="oficina">Oficina / Auto Reparo</option>
-                <option value="pneus">Pneus / Borracharia</option>
-                <option value="escola">Escola / Educação</option>
-                <option value="lavajato">Lava-Jato / Estacionamento</option>
-                <option value="otica">Ótica / Óculos</option>
-                <option value="petshop">Pet Shop / Veterinário</option>
+                <option value="comida">Alimentação / Gastronomia</option>
+                <option value="automoveis">Automóveis / Veículos</option>
+                <option value="saude">Saúde / Bem-Estar</option>
+                <option value="beleza">Beleza / Estética</option>
+                <option value="varejo">Comércio / Lojas (Varejo)</option>
+                <option value="servicos">Serviços Profissionais / Casa</option>
+                <option value="educacao">Educação / Ensino</option>
+                <option value="hospedagem">Hotelaria / Hospedagem</option>
+                <option value="entretenimento">Entretenimento / Lazer</option>
               </select>
             </div>
             <div class="field-group">
-              <label class="field-label">Subnicho Específico <span style="color:var(--text2);font-weight:400;font-size:10px">(opcional)</span></label>
-              <input type="text" class="input-field" id="s_bizSubSegment" placeholder="Ex: Emagrecimento, Kids..." />
+              <label class="field-label">Subnicho Específico <span style="color:var(--text2);font-weight:400;font-size:10px">(Ex: Pizzaria, Pneus...)</span></label>
+              <input type="text" class="input-field" id="s_bizSubSegment" placeholder="Ex: Hamburgueria, Estética Automotiva..." />
             </div>
           </div>
 
@@ -1015,6 +996,7 @@ function calcScore(biz) {
 
   // RECÊNCIA DAS AVALIAÇÕES (max 25) — critério mais importante
   const rev15 = reviews.filter(rv => (now - rv.time) <= 15 * 86400).length;
+  const rev30 = reviews.filter(rv => (now - rv.time) <= 30 * 86400).length;
   let mostRecentDays = Infinity;
   if (reviews.length > 0) {
     const latest = Math.max(...reviews.map(rv => rv.time));
