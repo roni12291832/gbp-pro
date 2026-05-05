@@ -402,6 +402,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
               <option value="oficina">Oficina / Auto Reparo</option>
               <option value="pneus">Pneus / Borracharia</option>
               <option value="escola">Escola / Educação</option>
+              <option value="lavajato">Lava-Jato / Estacionamento</option>
             </select>
           </div>
 
@@ -674,17 +675,47 @@ const CATEGORY_MAP = {
   oficina:        { name:'Oficina / Auto Reparo',       primary:['auto_repair_shop','car_repair_shop','mechanic'],                           secondary:['auto_parts_store','gas_station'],                                           reject:['car_dealer','hotel'],                         radius:1500 },
   pneus:          { name:'Pneus / Borracharia',         primary:['tire_shop','car_repair_shop','auto_parts_store'],                          secondary:['mechanic','auto_repair_shop'],                                               reject:['hotel','supermarket','restaurant'],            radius:3000 },
   escola:         { name:'Escola / Educação',           primary:['school','elementary_school','high_school','educational_institution'],       secondary:['university'],                                                               reject:['library','hotel'],                            radius:3000 },
+  lavajato:       { name:'Lava-Jato / Estacionamento',  primary:['car_wash','parking_garage'],                                               secondary:['auto_repair_shop','gas_station'],                                           reject:['clothing_store','hotel','restaurant'],         radius:1200 },
 };
 
-function detectCategory(types) {
-  if (!types || !types.length) return null;
-  for (const [key, cat] of Object.entries(CATEGORY_MAP)) {
-    if (types.some(t => cat.primary.includes(t))) return key;
-  }
-  for (const [key, cat] of Object.entries(CATEGORY_MAP)) {
-    if (types.some(t => cat.secondary.includes(t))) return key;
-  }
+function detectCategoryByName(name) {
+  const n = (name || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  if (/acai|sorvete|frozen|gelato|yogurt/.test(n)) return 'acai';
+  if (/pizza|pizzaria/.test(n)) return 'pizzaria';
+  if (/padaria|confeit|bolo|bakery/.test(n)) return 'padaria';
+  if (/\bhotel\b|pousada|hostel|motel/.test(n)) return 'hotel';
+  if (/\bbar\b|pub|boteco/.test(n)) return 'bar';
+  if (/sushi|japones|japao|temaki|yakisoba/.test(n)) return 'sushi';
+  if (/churrasco|steakhouse|espeto|churrascaria/.test(n)) return 'churrascaria';
+  if (/lanchon|hamburguer|burguer|burger|sanduiche|lanche/.test(n)) return 'lanchonete';
+  if (/\bcafe\b|cafeteria|coffee/.test(n)) return 'cafe';
+  if (/salao|cabelei|cabelo|beleza|hair/.test(n)) return 'salao';
+  if (/barbe/.test(n)) return 'barbearia';
+  if (/manicure|pedicure|unhas|nail/.test(n)) return 'manicure';
+  if (/academia|fitness|gym|musculacao/.test(n)) return 'academia';
+  if (/spa|massagem|estetica/.test(n)) return 'spa';
+  if (/pneu|borracha|tire/.test(n)) return 'pneus';
+  if (/farmacia|drogaria|droga/.test(n)) return 'farmacia';
+  if (/supermercado|mercado|mercadin/.test(n)) return 'supermercado';
+  if (/dentist|odonto|dental/.test(n)) return 'dentista';
+  if (/clinica|medic|saude|health/.test(n)) return 'clinica';
+  if (/imobili|imoveis|corret/.test(n)) return 'imoveis';
+  if (/oficina|mecanica|autocentro/.test(n)) return 'oficina';
+  if (/lava.?jato|lavagem/.test(n)) return 'lavajato';
+  if (/estacion/.test(n)) return 'lavajato';
   return null;
+}
+
+function detectCategory(types, name) {
+  if (types && types.length) {
+    for (const [key, cat] of Object.entries(CATEGORY_MAP)) {
+      if (types.some(t => cat.primary.includes(t))) return key;
+    }
+    for (const [key, cat] of Object.entries(CATEGORY_MAP)) {
+      if (types.some(t => cat.secondary.includes(t))) return key;
+    }
+  }
+  return detectCategoryByName(name);
 }
 
 function filterByCategory(rivals, categoryKey, mainPlaceId) {
@@ -798,7 +829,7 @@ async function doSearch() {
     updateStep(steps, 2);
 
     // Detectar segmento: usar seleção do usuário ou auto-detectar pelos tipos do Google
-    const detectedCategory = segmentSel || detectCategory(biz.types || []);
+    const detectedCategory = segmentSel || detectCategory(biz.types || [], biz.name);
     APP.segment = detectedCategory;
     const catConfig = CATEGORY_MAP[detectedCategory];
     const searchRadius = catConfig?.radius || 2000;
