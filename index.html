@@ -946,72 +946,50 @@ function calcScore(biz) {
   const reviews = biz.reviews || [];
   const now = Date.now() / 1000;
 
-  // NOTA GOOGLE (max 20)
-  if (r >= 4.8) s += 20;
-  else if (r >= 4.5) s += 14;
-  else if (r >= 4.0) s += 7;
-  else if (r >= 3.5) s += 2;
-  else if (r > 0 && r < 3.5) s -= 3;
+  // 1. NOTA GOOGLE (Max 25 pts)
+  if (r >= 4.8) s += 25;
+  else if (r >= 4.5) s += 20;
+  else if (r >= 4.0) s += 15;
+  else if (r >= 3.5) s += 5;
 
-  // VOLUME DE AVALIAÇÕES (max 15) — avalia o tamanho da reputação
-  if (t >= 500) s += 15;
-  else if (t >= 150) s += 7;
-  if (t > 0 && t < 150) s -= 5;
-  if (t === 0) s -= 10;
+  // 2. VOLUME DE AVALIAÇÕES (Max 20 pts)
+  if (t >= 300) s += 20;
+  else if (t >= 100) s += 15;
+  else if (t >= 50) s += 10;
+  else if (t >= 20) s += 5;
 
-  // RECÊNCIA DAS AVALIAÇÕES (max 25) — critério mais importante
+  // 3. RECÊNCIA (Max 20 pts)
   const rev15 = reviews.filter(rv => (now - rv.time) <= 15 * 86400).length;
   const rev30 = reviews.filter(rv => (now - rv.time) <= 30 * 86400).length;
-  let mostRecentDays = Infinity;
-  if (reviews.length > 0) {
-    const latest = Math.max(...reviews.map(rv => rv.time));
-    mostRecentDays = (now - latest) / 86400;
-  }
-
-  if (rev15 >= 8)               s += 25;
-  else if (rev15 >= 3)          s += 15;
+  const rev90 = reviews.filter(rv => (now - rv.time) <= 90 * 86400).length;
   
-  if (mostRecentDays > 90)      s -= 15;
-  else if (mostRecentDays > 30) s -= 10;
+  if (rev15 >= 1) s += 20;
+  else if (rev30 >= 1) s += 15;
+  else if (rev90 >= 1) s += 8;
 
-  // RESPOSTAS A AVALIAÇÕES (max 12)
+  // 4. TAXA DE RESPOSTA (Max 15 pts)
   const withReply = reviews.filter(rv => rv.owner_reply?.text).length;
   const replyRate = reviews.length > 0 ? withReply / reviews.length : 0;
   if (reviews.length > 0) {
-    if (replyRate >= 0.8)      s += 12;
-    else if (replyRate >= 0.5) s += 7;
-    else if (replyRate >= 0.2) s += 3;
-    else                       s -= 5;
+    if (replyRate >= 0.8) s += 15;
+    else if (replyRate >= 0.5) s += 10;
+    else if (replyRate >= 0.2) s += 5;
   }
 
-  // FOTOS (max 10) — Mídia atualizada engaja mais cliques
+  // 5. FOTOS (Max 10 pts)
   if (p >= 20) s += 10;
-  if (p > 0 && p < 20) s -= 5;
-  if (p === 0) s -= 8;
+  else if (p >= 10) s += 6;
 
-  // COMPLETUDE DO PERFIL (max 18)
-  if (biz.formatted_phone_number)       s += 6;
-  if (biz.website)                       s += 6;
-  if (biz.opening_hours?.weekday_text)   s += 6;
+  // 6. COMPLETUDE (Max 10 pts)
+  if (biz.formatted_phone_number)       s += 4;
+  if (biz.website)                       s += 3;
+  if (biz.opening_hours?.weekday_text)   s += 3;
 
-  // PERFIL NÃO OPERACIONAL
-  if (biz.business_status && biz.business_status !== 'OPERATIONAL') s -= 30;
+  // PENALIDADES CRÍTICAS APENAS (Para perfis fechados ou fantasmas)
+  if (biz.business_status && biz.business_status !== 'OPERATIONAL') s -= 50;
+  if (t === 0) s -= 30;
 
-  // PENALIDADE ACUMULADA: muitas falhas simultâneas no checklist
-  // Conta quantos critérios críticos estão falhando ao mesmo tempo
-  let hardFails = 0;
-  if (!biz.formatted_phone_number) hardFails++;
-  if (!biz.website)                hardFails++;
-  if (!biz.opening_hours?.weekday_text) hardFails++;
-  if (t < 150)                     hardFails++;
-  if (p < 20)                      hardFails++;
-  if (rev30 === 0)                  hardFails++;
-  if (reviews.length > 0 && replyRate < 0.2) hardFails++;
-  if (hardFails >= 6) s -= 12;
-  else if (hardFails >= 5) s -= 8;
-  else if (hardFails >= 4) s -= 5;
-  else if (hardFails >= 3) s -= 3;
-
+  // Math.round e garantimos que a nota fique entre 1 e 100 (mesmo perfis péssimos pontuam algo)
   return Math.max(49, Math.min(100, Math.round(s)));
 }
 
