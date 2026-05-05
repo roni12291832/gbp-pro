@@ -373,6 +373,37 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
               <input type="text" class="input-field" id="s_bizCity" placeholder="Ex: São Paulo, SP" />
             </div>
           </div>
+          <div class="field-group mb-2">
+            <label class="field-label">Segmento do negócio <span style="color:var(--text2);font-weight:400;font-size:10px">(filtra concorrentes do mesmo nicho)</span></label>
+            <select class="input-field" id="s_bizSegment">
+              <option value="">Detectar automaticamente pelos dados do Google</option>
+              <option value="acai">Açaí / Sorveteria</option>
+              <option value="padaria">Padaria / Confeitaria</option>
+              <option value="cafe">Café / Cafeteria</option>
+              <option value="pizzaria">Pizzaria</option>
+              <option value="restaurante">Restaurante</option>
+              <option value="lanchonete">Lanchonete / Fast Food</option>
+              <option value="sushi">Sushi / Japonês</option>
+              <option value="churrascaria">Churrascaria / Steakhouse</option>
+              <option value="bar">Bar / Pub</option>
+              <option value="salao">Salão de Beleza / Cabeleireiro</option>
+              <option value="barbearia">Barbearia</option>
+              <option value="manicure">Manicure / Salão de Unhas</option>
+              <option value="spa">Spa / Massagem</option>
+              <option value="academia">Academia / Fitness</option>
+              <option value="hotel">Hotel / Pousada</option>
+              <option value="clinica">Clínica / Consultório Médico</option>
+              <option value="dentista">Dentista / Odontologia</option>
+              <option value="farmacia">Farmácia / Drogaria</option>
+              <option value="supermercado">Supermercado / Mercado</option>
+              <option value="roupas">Loja de Roupas / Vestuário</option>
+              <option value="eletronicos">Eletrônicos / Informática</option>
+              <option value="imoveis">Imobiliária</option>
+              <option value="oficina">Oficina / Auto Reparo</option>
+              <option value="pneus">Pneus / Borracharia</option>
+              <option value="escola">Escola / Educação</option>
+            </select>
+          </div>
 
 
           <div class="alert alert-info mb-2">
@@ -599,6 +630,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 let APP = {
   currentBiz: null,
   competitors: [],
+  segment: null,
   aiText: '',
   history: JSON.parse(localStorage.getItem('gbp_history') || '[]'),
   clients: JSON.parse(localStorage.getItem('gbp_clients') || '[]'),
@@ -612,6 +644,64 @@ window.onload = () => {
   renderManageList();
   document.addEventListener('keydown', e => { if (e.key === 'Enter' && document.activeElement.id.startsWith('s_')) doSearch(); });
 };
+
+/* ===========================
+   CATEGORY MAP — filtragem de concorrentes por nicho
+   =========================== */
+const CATEGORY_MAP = {
+  acai:           { name:'Açaí / Sorveteria',          primary:['acai_shop','ice_cream_shop','frozen_yogurt_shop'],                         secondary:['cafe','juice_bar','smoothie_shop'],                                         reject:['restaurant','hotel','supermarket','lodging'],  radius:1500 },
+  padaria:        { name:'Padaria / Confeitaria',       primary:['bakery','bread_shop','pastry_shop'],                                       secondary:['confectionery','cafe','donut_shop'],                                        reject:['supermarket','restaurant'],                    radius:1000 },
+  cafe:           { name:'Café / Cafeteria',            primary:['cafe','coffee_shop','tea_shop'],                                           secondary:['bakery','pastry_shop'],                                                     reject:['bar','nightclub','supermarket','hotel'],       radius:1200 },
+  pizzaria:       { name:'Pizzaria',                    primary:['pizzeria','pizza_restaurant'],                                             secondary:['italian_restaurant','restaurant'],                                          reject:['supermarket','bar','cafe','hotel'],            radius:2000 },
+  restaurante:    { name:'Restaurante',                 primary:['restaurant','italian_restaurant','chinese_restaurant','meal_delivery'],     secondary:['food','meal_takeaway'],                                                     reject:['supermarket','bar','hotel','lodging'],         radius:2000 },
+  lanchonete:     { name:'Lanchonete / Fast Food',      primary:['fast_food_restaurant','hamburger_restaurant','sandwich_shop'],             secondary:['restaurant','snack_bar'],                                                   reject:['hotel','supermarket'],                        radius:1500 },
+  sushi:          { name:'Sushi / Japonês',             primary:['sushi_restaurant','japanese_restaurant','ramen_restaurant'],               secondary:['restaurant'],                                                               reject:['pizzeria','hotel','bar'],                     radius:2500 },
+  churrascaria:   { name:'Churrascaria / Steakhouse',   primary:['steakhouse','barbecue_restaurant'],                                        secondary:['restaurant','brazilian_restaurant'],                                        reject:['pizzeria','hotel','supermarket'],              radius:3000 },
+  bar:            { name:'Bar / Pub',                   primary:['bar','pub','nightclub','cocktail_bar'],                                    secondary:['restaurant'],                                                               reject:['cafe','hotel','supermarket'],                 radius:2000 },
+  salao:          { name:'Salão de Beleza',             primary:['beauty_salon','hair_salon','hair_care'],                                   secondary:['barber_shop','health_spa','wellness_center'],                               reject:['pharmacy','clothing_store','hotel'],           radius:1500 },
+  barbearia:      { name:'Barbearia',                   primary:['barber_shop','barber'],                                                    secondary:['beauty_salon'],                                                             reject:['clothing_store','pharmacy','hotel'],           radius:1200 },
+  manicure:       { name:'Manicure / Unhas',            primary:['nail_salon','manicure_salon'],                                             secondary:['beauty_salon','health_spa'],                                                reject:['pharmacy','clothing_store'],                   radius:1000 },
+  spa:            { name:'Spa / Massagem',              primary:['spa','health_spa','massage_center'],                                       secondary:['wellness_center','beauty_salon'],                                           reject:['pharmacy','gym','hotel'],                     radius:1500 },
+  academia:       { name:'Academia / Fitness',          primary:['gym','fitness_center'],                                                    secondary:['wellness_center','sports_complex'],                                         reject:['spa','shopping_mall','hotel'],                radius:2000 },
+  hotel:          { name:'Hotel / Pousada',             primary:['hotel','lodging','bed_and_breakfast','motel','hostel'],                    secondary:['resort'],                                                                   reject:['restaurant','bar','supermarket'],              radius:2000 },
+  clinica:        { name:'Clínica / Consultório',       primary:['clinic','doctor','health_service','medical_clinic'],                       secondary:['hospital','physical_therapy_center'],                                       reject:['pharmacy','gym','hotel'],                     radius:2000 },
+  dentista:       { name:'Dentista / Odontologia',      primary:['dentist','dental_clinic','orthodontist'],                                  secondary:['clinic'],                                                                   reject:['pharmacy','hospital'],                        radius:1500 },
+  farmacia:       { name:'Farmácia / Drogaria',         primary:['pharmacy','drugstore'],                                                    secondary:['health_food_restaurant'],                                                   reject:['clothing_store','bar','restaurant'],           radius:1000 },
+  supermercado:   { name:'Supermercado / Mercado',      primary:['supermarket','grocery_store'],                                             secondary:['convenience_store'],                                                        reject:['restaurant','bar','cafe'],                    radius:3000 },
+  roupas:         { name:'Loja de Roupas',              primary:['clothing_store','apparel_store'],                                          secondary:['shoe_store','fashion_designer'],                                            reject:['pharmacy','supermarket'],                     radius:2000 },
+  eletronicos:    { name:'Eletrônicos / Informática',   primary:['electronics_store','computer_store','mobile_phone_shop'],                  secondary:['electronics_repair_shop'],                                                  reject:['clothing_store','supermarket'],                radius:2500 },
+  imoveis:        { name:'Imobiliária',                 primary:['real_estate_agency','real_estate_agent'],                                  secondary:['construction_company'],                                                     reject:['furniture_store','hotel'],                    radius:3000 },
+  oficina:        { name:'Oficina / Auto Reparo',       primary:['auto_repair_shop','car_repair_shop','mechanic'],                           secondary:['auto_parts_store','gas_station'],                                           reject:['car_dealer','hotel'],                         radius:1500 },
+  pneus:          { name:'Pneus / Borracharia',         primary:['tire_shop','car_repair_shop','auto_parts_store'],                          secondary:['mechanic','auto_repair_shop'],                                               reject:['hotel','supermarket','restaurant'],            radius:3000 },
+  escola:         { name:'Escola / Educação',           primary:['school','elementary_school','high_school','educational_institution'],       secondary:['university'],                                                               reject:['library','hotel'],                            radius:3000 },
+};
+
+function detectCategory(types) {
+  if (!types || !types.length) return null;
+  for (const [key, cat] of Object.entries(CATEGORY_MAP)) {
+    if (types.some(t => cat.primary.includes(t))) return key;
+  }
+  for (const [key, cat] of Object.entries(CATEGORY_MAP)) {
+    if (types.some(t => cat.secondary.includes(t))) return key;
+  }
+  return null;
+}
+
+function filterByCategory(rivals, categoryKey, mainPlaceId) {
+  const cat = CATEGORY_MAP[categoryKey];
+  if (!cat) return rivals.filter(r => r.place_id !== mainPlaceId);
+  return rivals.filter(r => {
+    if (r.place_id === mainPlaceId) return false;
+    const types = r.types || [];
+    if (types.some(t => cat.reject.includes(t))) return false;
+    return types.some(t => cat.primary.includes(t) || cat.secondary.includes(t));
+  });
+}
+
+// Score ponderado: penaliza negócios com poucas avaliações
+function compWeightedScore(rating, total) {
+  return (rating || 0) * Math.log10((total || 0) + 2);
+}
 
 function saveConfig() {
   // Config save removed
@@ -660,6 +750,7 @@ function updateStep(steps, idx) {
 async function doSearch() {
   const name = document.getElementById('s_bizName').value.trim();
   const city = document.getElementById('s_bizCity').value.trim();
+  const segmentSel = document.getElementById('s_bizSegment').value.trim();
   document.getElementById('searchError').style.display = 'none';
   if (!name) return showSearchError('Informe o nome do negócio.');
 
@@ -706,15 +797,25 @@ async function doSearch() {
 
     updateStep(steps, 2);
 
-    // Load nearby competitors
+    // Detectar segmento: usar seleção do usuário ou auto-detectar pelos tipos do Google
+    const detectedCategory = segmentSel || detectCategory(biz.types || []);
+    APP.segment = detectedCategory;
+    const catConfig = CATEGORY_MAP[detectedCategory];
+    const searchRadius = catConfig?.radius || 2000;
+
+    // Load nearby competitors — filtra pelo mesmo nicho
     if (biz.lat && biz.lng) {
-      const type = biz.types?.[0] || 'establishment';
-      const nearUrl = `/api/places?action=nearby&lat=${biz.lat}&lng=${biz.lng}&type=${type}&radius=2000`;
+      // Usar keyword do nicho para busca mais precisa
+      const nicheKeyword = catConfig
+        ? catConfig.primary[0].replace(/_/g, ' ')
+        : (biz.types?.filter(t => !['establishment','point_of_interest','store','food','health'].includes(t))[0] || '').replace(/_/g,' ');
+      const nearUrl = `/api/places?action=nearby&lat=${biz.lat}&lng=${biz.lng}&keyword=${encodeURIComponent(nicheKeyword)}&radius=${searchRadius}`;
       try {
         const nearRes = await fetch(nearUrl);
         const nearData = await nearRes.json();
         if (nearData.results) {
-          APP.competitors = nearData.results.filter(r => r.place_id !== place_id).slice(0, 8).map(r => ({
+          const filtered = filterByCategory(nearData.results, detectedCategory, place_id);
+          APP.competitors = filtered.slice(0, 10).map(r => ({
             name: r.name, rating: r.rating || 0, total: r.user_ratings_total || 0,
             address: r.vicinity, place_id: r.place_id,
             types: r.types, status: r.business_status
@@ -1230,18 +1331,21 @@ function renderCompetitors() {
   }
 
   const allBiz = [{ name:biz.name, rating:biz.rating||0, total:biz.user_ratings_total||0, isMain:true }, ...comps];
-  allBiz.sort((a,b) => b.rating===a.rating ? b.total-a.total : b.rating-a.rating);
+  // Ranking ponderado: nota × log(avaliações+2) — evita que 5★ com 9 reviews bata 4.5★ com 500
+  allBiz.sort((a,b) => compWeightedScore(b.rating, b.total) - compWeightedScore(a.rating, a.total));
   const mainRank = allBiz.findIndex(b=>b.isMain) + 1;
+  const segLabel = APP.segment ? (CATEGORY_MAP[APP.segment]?.name || '') : '';
 
   let tableRows = allBiz.map((b,i) => {
     const rC = b.rating>=4?'#1D9E75':b.rating>=3?'#BA7517':'#E24B4A';
     const rankC = i===0?'rank-1':i===1?'rank-2':i===2?'rank-3':'';
+    const ws = compWeightedScore(b.rating, b.total).toFixed(1);
     return `<tr class="${b.isMain?'highlight':''}">
       <td><span class="rank-badge ${rankC}">${i+1}</span></td>
       <td><strong>${b.name}</strong>${b.isMain?' <span class="tag tag-blue" style="font-size:10px">seu cliente</span>':''}</td>
       <td style="color:${rC};font-weight:600">${b.rating>0?b.rating.toFixed(1)+' ★':'N/A'}</td>
       <td>${b.total.toLocaleString('pt-BR')}</td>
-      <td><div style="height:6px;width:${Math.min(100,b.rating/5*100).toFixed(0)}%;background:${rC};border-radius:3px;min-width:4px"></div></td>
+      <td><span style="font-size:11px;color:var(--text2)">${ws}</span></td>
     </tr>`;
   }).join('');
 
@@ -1250,17 +1354,18 @@ function renderCompetitors() {
   const mainBiz = allBiz.find(b=>b.isMain);
 
   document.getElementById('comp_content').innerHTML = `
+    ${segLabel?`<div style="margin-bottom:12px;font-size:12px;color:var(--text2)">Segmento detectado: <strong style="color:var(--green)">${segLabel}</strong> — concorrentes filtrados pelo mesmo nicho</div>`:''}
     <div class="grid-4 mb-2">
       <div class="metric-card"><div class="metric-label">Posição no ranking</div><div class="metric-value" style="color:${mainRank<=3?'#1D9E75':'#BA7517'}">${mainRank}º</div><div class="metric-sub">de ${allBiz.length} negócios</div></div>
-      <div class="metric-card"><div class="metric-label">Nota média da região</div><div class="metric-value" style="color:var(--amber)">${avgRating}</div><div class="metric-sub">do segmento</div></div>
-      <div class="metric-card"><div class="metric-label">Avaliações médias</div><div class="metric-value" style="color:var(--text)">${avgTotal.toLocaleString('pt-BR')}</div><div class="metric-sub">por negócio</div></div>
+      <div class="metric-card"><div class="metric-label">Nota média do nicho</div><div class="metric-value" style="color:var(--amber)">${avgRating}</div><div class="metric-sub">do segmento</div></div>
+      <div class="metric-card"><div class="metric-label">Avaliações médias</div><div class="metric-value" style="color:${(mainBiz?.total||0)>=avgTotal?'#1D9E75':'#E24B4A'}">${avgTotal.toLocaleString('pt-BR')}</div><div class="metric-sub">${(mainBiz?.total||0)>=avgTotal?'seu cliente acima':'seu cliente abaixo'} da média</div></div>
       <div class="metric-card"><div class="metric-label">Seu cliente vs média</div><div class="metric-value" style="color:${(mainBiz?.rating||0)>=parseFloat(avgRating)?'#1D9E75':'#E24B4A'}">${((mainBiz?.rating||0)>=parseFloat(avgRating)?'+':'')}${((mainBiz?.rating||0)-parseFloat(avgRating)).toFixed(1)}</div><div class="metric-sub">diferença de nota</div></div>
     </div>
     <div class="card mb-2">
       <div class="card-title mb-2"><span class="card-title-dot" style="background:var(--amber)"></span>Ranking de concorrentes na região (raio 2km)</div>
       <div style="overflow-x:auto">
         <table class="comp-table">
-          <thead><tr><th>#</th><th>Negócio</th><th>Nota</th><th>Avaliações</th><th>Score visual</th></tr></thead>
+          <thead><tr><th>#</th><th>Negócio</th><th>Nota</th><th>Avaliações</th><th>Score pond.</th></tr></thead>
           <tbody>${tableRows}</tbody>
         </table>
       </div>
@@ -1288,24 +1393,22 @@ function renderCompetitors() {
 
 async function loadCompetitors() {
   if (APP.competitors.length) { renderCompetitors(); return; }
-  document.getElementById('comp_content').innerHTML = `<div class="empty-state"><div class="spinner" style="margin:0 auto 12px"></div><div>Buscando rigorosamente os verdadeiros concorrentes na área...</div></div>`;
+  document.getElementById('comp_content').innerHTML = `<div class="empty-state"><div class="spinner" style="margin:0 auto 12px"></div><div>Buscando concorrentes do mesmo nicho...</div></div>`;
   const biz = APP.currentBiz;
   if (!biz || !biz.lat) return;
-  const ignoredTypes = ['establishment', 'point_of_interest', 'store', 'food', 'health'];
-  const validTypes = (biz.types || []).filter(t => !ignoredTypes.includes(t));
-  const primaryType = validTypes.length > 0 ? validTypes[0] : '';
-  const keyword = primaryType ? primaryType.replace(/_/g, ' ') : biz.name;
-  
-  const nearUrl = `/api/places?action=nearby&lat=${biz.lat}&lng=${biz.lng}&keyword=${encodeURIComponent(keyword)}${primaryType ? '&type=' + primaryType : ''}&radius=3000`;
+  const catConfig = CATEGORY_MAP[APP.segment];
+  const searchRadius = catConfig?.radius || 2000;
+  const keyword = catConfig
+    ? catConfig.primary[0].replace(/_/g, ' ')
+    : (biz.types?.filter(t => !['establishment','point_of_interest','store','food','health'].includes(t))[0] || '').replace(/_/g,' ') || biz.name;
+
+  const nearUrl = `/api/places?action=nearby&lat=${biz.lat}&lng=${biz.lng}&keyword=${encodeURIComponent(keyword)}&radius=${searchRadius}`;
   try {
     const nearRes = await fetch(nearUrl);
     const nearData = await nearRes.json();
     if (nearData.results) {
-      APP.competitors = nearData.results.filter(r => 
-        r.place_id !== biz.place_id && 
-        r.business_status === 'OPERATIONAL' &&
-        (!primaryType || (r.types && r.types.includes(primaryType)))
-      ).slice(0, 8).map(r => ({
+      const filtered = filterByCategory(nearData.results, APP.segment, biz.place_id);
+      APP.competitors = filtered.slice(0, 10).map(r => ({
         name: r.name, rating: r.rating || 0, total: r.user_ratings_total || 0,
         address: r.vicinity, place_id: r.place_id, types: r.types, status: r.business_status
       }));
