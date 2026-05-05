@@ -447,6 +447,11 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 
       <div class="card mb-2" id="db_opportunities"></div>
 
+      <div class="card mb-2">
+        <div class="card-title mb-2"><span class="card-title-dot" style="background:var(--blue)"></span>Localização no Mapa e Raio de Busca</div>
+        <div id="db_map_container" style="width: 100%; height: 320px; border-radius: 8px; overflow: hidden; background: var(--bg3);"></div>
+      </div>
+
       <div class="grid-2">
         <div class="card" id="db_hours"></div>
         <div class="card" id="db_contact"></div>
@@ -810,13 +815,24 @@ function calcScore(biz) {
   const r = biz.rating || 0;
   const t = biz.user_ratings_total || 0;
   const p = biz.photos?.length || 0;
-  if (r >= 4.5) s += 28; else if (r >= 4) s += 22; else if (r >= 3) s += 12; else if (r > 0) s += 4;
-  if (t >= 100) s += 22; else if (t >= 50) s += 16; else if (t >= 20) s += 10; else if (t >= 5) s += 4;
+  
+  if (r >= 4.8) s += 20; else if (r >= 4.5) s += 15; else if (r >= 4.0) s += 8; else if (r > 0) s += 2;
+  if (t >= 150) s += 15; else if (t >= 80) s += 10; else if (t >= 30) s += 5; else if (t >= 10) s += 2;
   if (biz.formatted_phone_number) s += 10;
   if (biz.website) s += 10;
-  if (biz.opening_hours?.weekday_text) s += 14;
-  if (p >= 20) s += 16; else if (p >= 10) s += 11; else if (p >= 3) s += 6; else if (p >= 1) s += 2;
-  return Math.min(100, s);
+  if (biz.opening_hours?.weekday_text) s += 10;
+  if (p >= 30) s += 10; else if (p >= 15) s += 6; else if (p >= 5) s += 3;
+
+  const now = Date.now() / 1000;
+  const recentReviews = (biz.reviews||[]).filter(rev => now - rev.time <= 15 * 86400).length;
+  
+  if (recentReviews >= 2) s += 25; 
+  else if (recentReviews === 1) s += 10;
+  else s -= 30; // Penalidade rigorosa se não houver avaliação nos últimos 15 dias
+
+  if (p < 10) s -= 15; // Penalidade rigorosa se tiver poucas fotos assumindo mídia desatualizada
+
+  return Math.max(0, Math.min(100, s));
 }
 
 function scoreColor(s) { return s >= 70 ? '#1D9E75' : s >= 45 ? '#BA7517' : '#E24B4A'; }
@@ -841,6 +857,11 @@ function renderDashboard(biz, score) {
     <div class="metric-card"><div class="metric-label">Fotos públicas</div><div class="metric-value ${pC}">${p}</div><div class="metric-sub">${p>=10?'Boa galeria':p>=3?'Poucos':p===0?'Nenhuma':'Insuficiente'}</div></div>
     <div class="metric-card"><div class="metric-label">Score de saúde</div><div class="metric-value" style="color:${scoreColor(score)}">${score}</div><div class="metric-sub">/100 — ${scoreLabel(score)}</div></div>
   `;
+
+  const mapContainer = document.getElementById('db_map_container');
+  if (mapContainer && biz.lat && biz.lng) {
+    mapContainer.innerHTML = `<iframe width="100%" height="100%" frameborder="0" style="border:0" src="https://maps.google.com/maps?q=${biz.lat},${biz.lng}&hl=pt&z=14&output=embed"></iframe>`;
+  }
 
   // Health ring
   const circ = 2*Math.PI*36, dash = (score/100)*circ, col = scoreColor(score);
@@ -932,12 +953,13 @@ function buildOpportunities(biz) {
 function renderChecklist(biz, score) {
   const r = biz.rating||0, t = biz.user_ratings_total||0, p = biz.photos?.length||0;
   const reviews = biz.reviews||[];
-  const hasRecent = reviews.some(rv => (Date.now()/1000 - rv.time) < 90*86400);
+  const recentCount = reviews.filter(rv => (Date.now()/1000 - rv.time) <= 15*86400).length;
+  const hasRecent = recentCount > 0;
 
   const checks = [
     { l:'Avaliação ≥ 4 estrelas', ok:r>=4, w:r>=3&&r<4, v:r>0?r.toFixed(1)+' ★':'Sem avaliações', tip:'Avaliação média acima de 4 é referência de confiança.' },
     { l:'Volume de avaliações ≥ 50', ok:t>=50, w:t>=20&&t<50, v:t+' avaliações', tip:'Negócios com mais avaliações aparecem mais no Maps.' },
-    { l:'Avaliações recentes (90 dias)', ok:hasRecent, w:reviews.length>0&&!hasRecent, v:hasRecent?'Sim':'Sem recentes', tip:'Frequência de novas avaliações influencia o ranking local.' },
+    { l:'Avaliações rigorosas recentes (15 dias)', ok:hasRecent, w:reviews.length>0&&!hasRecent, v:hasRecent?`${recentCount} na amostra`:'Sem recentes', tip:'O perfil PRECISA receber avaliações nos últimos 15 dias. Sem isso a nota cai criticamente.' },
     { l:'Telefone cadastrado', ok:!!biz.formatted_phone_number, v:biz.formatted_phone_number||'Não cadastrado', tip:'Aumenta as chamadas diretas do Google Maps.' },
     { l:'Website linkado', ok:!!biz.website, v:biz.website?'Cadastrado':'Não cadastrado', tip:'Redirecionamentos ao site geram conversões.' },
     { l:'Horários de funcionamento', ok:!!biz.opening_hours, v:biz.opening_hours?'Cadastrado':'Não cadastrado', tip:'Usuários verificam horários antes de visitar.' },
@@ -1128,13 +1150,19 @@ async function loadCompetitors() {
   if (!biz || !biz.lat) return;
   const ignoredTypes = ['establishment', 'point_of_interest', 'store', 'food', 'health'];
   const validTypes = (biz.types || []).filter(t => !ignoredTypes.includes(t));
-  const keyword = validTypes.length > 0 ? validTypes[0].replace(/_/g, ' ') : biz.name;
-  const nearUrl = `/api/places?action=nearby&lat=${biz.lat}&lng=${biz.lng}&keyword=${encodeURIComponent(keyword)}&radius=3000`;
+  const primaryType = validTypes.length > 0 ? validTypes[0] : '';
+  const keyword = primaryType ? primaryType.replace(/_/g, ' ') : biz.name;
+  
+  const nearUrl = `/api/places?action=nearby&lat=${biz.lat}&lng=${biz.lng}&keyword=${encodeURIComponent(keyword)}${primaryType ? '&type=' + primaryType : ''}&radius=3000`;
   try {
     const nearRes = await fetch(nearUrl);
     const nearData = await nearRes.json();
     if (nearData.results) {
-      APP.competitors = nearData.results.filter(r => r.place_id !== biz.place_id).slice(0, 8).map(r => ({
+      APP.competitors = nearData.results.filter(r => 
+        r.place_id !== biz.place_id && 
+        r.business_status === 'OPERATIONAL' &&
+        (!primaryType || (r.types && r.types.includes(primaryType)))
+      ).slice(0, 8).map(r => ({
         name: r.name, rating: r.rating || 0, total: r.user_ratings_total || 0,
         address: r.vicinity, place_id: r.place_id, types: r.types, status: r.business_status
       }));
