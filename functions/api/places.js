@@ -32,7 +32,7 @@ export async function onRequest(context) {
     } else if (action === 'details') {
       const place_id = url.searchParams.get('place_id');
       const fields = 'name,formatted_address,formatted_phone_number,website,rating,user_ratings_total,opening_hours,photos,reviews,types,business_status,price_level,editorial_summary,geometry,url';
-      googleUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place_id}&fields=${fields}&key=${GOOGLE_KEY}&language=pt-BR`;
+      googleUrl = `https://maps.googleapis.com/maps/api/place/details/json?place_id=${place_id}&fields=${fields}&key=${GOOGLE_KEY}&language=pt-BR&reviews_sort=newest`;
 
     } else if (action === 'nearby') {
       const lat = url.searchParams.get('lat');
