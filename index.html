@@ -706,16 +706,28 @@ function detectCategoryByName(name) {
   return null;
 }
 
+const GENERIC_TYPES = new Set(['food','establishment','point_of_interest','store','health','premise','route','meal_delivery','meal_takeaway']);
+
 function detectCategory(types, name) {
+  // 1. Specific primary types (most reliable)
   if (types && types.length) {
     for (const [key, cat] of Object.entries(CATEGORY_MAP)) {
       if (types.some(t => cat.primary.includes(t))) return key;
     }
-    for (const [key, cat] of Object.entries(CATEGORY_MAP)) {
-      if (types.some(t => cat.secondary.includes(t))) return key;
+  }
+  // 2. Business name (more reliable than generic types like 'food', 'establishment')
+  const byName = detectCategoryByName(name);
+  if (byName) return byName;
+  // 3. Non-generic secondary types as last resort
+  if (types && types.length) {
+    const specific = types.filter(t => !GENERIC_TYPES.has(t));
+    if (specific.length) {
+      for (const [key, cat] of Object.entries(CATEGORY_MAP)) {
+        if (specific.some(t => cat.secondary.includes(t))) return key;
+      }
     }
   }
-  return detectCategoryByName(name);
+  return null;
 }
 
 function filterByCategory(rivals, categoryKey, mainPlaceId) {
