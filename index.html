@@ -686,7 +686,9 @@ const CATEGORY_MAP = {
   escola:         { name:'Escola',                      primary:['school','elementary_school','high_school'],                                secondary:['university','educational_institution'],                                     reject:['library','daycare'],                                           radius:3000, top:10 },
   cursos:         { name:'Cursos / Academia',           primary:['education','language_school','driving_school'],                            secondary:['school','university'],                                                      reject:['gym','library'],                                               radius:2000, top:10 },
   cinema:         { name:'Cinema',                      primary:['movie_theater','cinema'],                                                  secondary:['amusement_park','entertainment'],                                           reject:['bar','nightclub'],                                             radius:2500, top:8 },
-  boliche:        { name:'Boliche / Entretenimento',    primary:['bowling_alley','recreation_center'],                                       secondary:['amusement_park','arcade'],                                                  reject:['bar','nightclub'],                                             radius:2000, top:8 }
+  boliche:        { name:'Boliche / Entretenimento',    primary:['bowling_alley','recreation_center'],                                       secondary:['amusement_park','arcade'],                                                  reject:['bar','nightclub'],                                             radius:2000, top:8 },
+  otica:          { name:'Ótica / Óculos',              primary:['optician'],                                                                secondary:['health','store'],                                                           reject:['restaurant','supermarket','hotel','bar'],                      radius:2000, top:10 },
+  petshop:        { name:'Pet Shop / Veterinário',      primary:['pet_store','veterinary_care'],                                             secondary:['store'],                                                                    reject:['restaurant','supermarket','clothing_store','hotel'],           radius:2000, top:10 }
 };
 
 function detectCategoryByName(name) {
@@ -716,6 +718,8 @@ function detectCategoryByName(name) {
   if (/estacion/.test(n)) return 'lavajato';
   if (/escola|colegio|autoescola|auto\s?escola/.test(n)) return 'escola';
   if (/curso|treinamento/.test(n)) return 'cursos';
+  if (/otica|oculos|optica/.test(n)) return 'otica';
+  if (/pet|veterinar/.test(n)) return 'petshop';
   return null;
 }
 
