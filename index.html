@@ -387,6 +387,10 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
                 <option value="educacao">Educação / Ensino</option>
                 <option value="hospedagem">Hotelaria / Hospedagem</option>
                 <option value="entretenimento">Entretenimento / Lazer</option>
+                <option value="imoveis">Imóveis / Construção</option>
+                <option value="industria">Indústria / Fábricas / B2B</option>
+                <option value="pet">Pet Shop / Veterinário</option>
+                <option value="tecnologia">Tecnologia / Software</option>
               </select>
             </div>
             <div class="field-group">
@@ -639,76 +643,36 @@ window.onload = () => {
    CATEGORY MAP — filtragem de concorrentes por nicho
    =========================== */
 const CATEGORY_MAP = {
-  pizzaria:       { name:'Pizzaria',                    primary:['pizzeria','pizza_restaurant','pizza'],                                     secondary:['italian_restaurant','restaurant','food'],                                   reject:['supermarket','cafe','bar','nightclub','grocery_store'],        radius:2000, top:10 },
-  restaurante_italiano: { name:'Restaurante Italiano',  primary:['italian_restaurant','restaurant'],                                         secondary:['pizzeria','pasta_restaurant','food'],                                       reject:['supermarket','fast_food_restaurant','bar'],                    radius:2500, top:10 },
-  lanchonete:     { name:'Lanchonete / Fast Food',      primary:['fast_food_restaurant','hamburger_restaurant','sandwich_shop'],             secondary:['restaurant','food_delivery','snack_bar'],                                   reject:['pizzeria','fine_dining','japanese_restaurant'],                radius:1500, top:12 },
-  sushi:          { name:'Sushi / Japonês',             primary:['sushi_restaurant','japanese_restaurant','ramen_restaurant'],               secondary:['restaurant','food'],                                                        reject:['pizzeria','steakhouse','chinese_restaurant','bar'],            radius:2500, top:8 },
-  churrascaria:   { name:'Churrascaria / Steakhouse',   primary:['steakhouse','churrascaria','barbecue_restaurant'],                         secondary:['restaurant','brazilian_restaurant','meat_restaurant'],                      reject:['pizzeria','vegetarian_restaurant','vegan_restaurant'],         radius:3000, top:8 },
-  padaria:        { name:'Padaria / Confeitaria',       primary:['bakery','bread_shop','pastry_shop'],                                       secondary:['confectionery','cafe','donut_shop'],                                        reject:['supermarket','restaurant','grocery_store'],                    radius:1000, top:10 },
-  cafe:           { name:'Café / Cafeteria',            primary:['cafe','coffee_shop','tea_shop'],                                           secondary:['bakery','pastry_shop','restaurant'],                                        reject:['bar','nightclub','supermarket'],                               radius:1200, top:12 },
-  bar:            { name:'Bar / Pub',                   primary:['bar','pub','nightclub','cocktail_bar'],                                    secondary:['restaurant','food_delivery'],                                               reject:['cafe','church','library'],                                     radius:2000, top:10 },
-  acai:           { name:'Açaí / Sorveteria',           primary:['acai_shop','ice_cream_shop','frozen_yogurt_shop'],                         secondary:['cafe','juice_bar','smoothie_shop'],                                         reject:['restaurant','supermarket'],                                    radius:1500, top:10 },
-  salao:          { name:'Salão de Beleza',             primary:['beauty_salon','hair_salon','haircare','hair_care'],                        secondary:['health_spa','barber_shop','wellness_center','cosmetics_shop'],              reject:['pharmacy','clothing_store','jewelry_store','nail_salon'],      radius:1500, top:8 },
-  barbearia:      { name:'Barbearia',                   primary:['barber_shop','barber','hair_salon'],                                       secondary:['beauty_salon','wellness_center'],                                           reject:['clothing_store','pharmacy'],                                   radius:1200, top:8 },
-  manicure:       { name:'Manicure / Unhas',            primary:['nail_salon','manicure_salon'],                                             secondary:['beauty_salon','health_spa'],                                                reject:['pharmacy','clothing_store'],                                   radius:1000, top:10 },
-  spa:            { name:'Spa / Massagem',              primary:['spa','health_spa','massage_center','massage_spa'],                         secondary:['wellness_center','beauty_salon','physical_therapy_center'],                 reject:['pharmacy','gym'],                                              radius:1500, top:8 },
-  academia:       { name:'Academia / Fitness',          primary:['gym','fitness_center','health_spa'],                                       secondary:['wellness_center','personal_trainer','sports_complex'],                      reject:['spa','shopping_mall','pharmacy'],                              radius:2000, top:10 },
-  estetica:       { name:'Estética / Centro Estético',  primary:['cosmetics_shop','aesthetic_treatment_service','beauty_treatment_service'], secondary:['health_spa','beauty_salon','spa'],                                            reject:['pharmacy','clothing_store'],                                   radius:1500, top:8 },
-  roupas:         { name:'Loja de Roupas',              primary:['clothing_store','apparel_store','mens_clothing_store','womens_clothing_store'], secondary:['shoe_store','fashion_designer','shopping_mall'],                     reject:['pharmacy','supermarket','electronics_store'],                  radius:2000, top:12 },
-  sapatos:        { name:'Sapatos / Calçados',          primary:['shoe_store','boot_store'],                                                 secondary:['clothing_store','shopping_mall'],                                           reject:['supermarket','pharmacy'],                                      radius:1500, top:10 },
-  joalheria:      { name:'Joalheria / Bijuteria',       primary:['jewelry_store','jeweler'],                                                 secondary:['watch_repair_shop','costume_jewelry_shop'],                                 reject:['clothing_store','supermarket'],                                radius:2000, top:8 },
-  eletronicos:    { name:'Lojas de Eletrônicos',        primary:['electronics_store','electronics_repair_shop'],                             secondary:['computer_store','mobile_phone_shop'],                                       reject:['supermarket','clothing_store'],                                radius:2500, top:10 },
-  farmacia:       { name:'Farmácia',                    primary:['pharmacy','drugstore'],                                                    secondary:['health_food_restaurant','vitamin_store'],                                   reject:['clothing_store','bar','restaurant'],                           radius:1000, top:10 },
-  supermercado:   { name:'Supermercado',                primary:['supermarket','grocery_store'],                                             secondary:['shopping_mall','convenience_store'],                                        reject:['restaurant','bar','cafe'],                                     radius:3000, top:10 },
-  livraria:       { name:'Livraria',                    primary:['book_store','library'],                                                    secondary:['stationery_store','office_supply_store'],                                   reject:['supermarket','clothing_store'],                                radius:2000, top:8 },
-  imoveis:        { name:'Imobiliária',                 primary:['real_estate_agency','real_estate_agent'],                                  secondary:['architectural_office','construction_company'],                              reject:['furniture_store','hardware_store'],                            radius:3000, top:10 },
-  moveis:         { name:'Loja de Móveis',              primary:['furniture_store','home_furniture_store'],                                  secondary:['home_improvement_store','hardware_store'],                                  reject:['clothing_store','supermarket'],                                radius:2000, top:10 },
-  construcao:     { name:'Materiais de Construção',     primary:['hardware_store','building_supply_store','home_improvement_store'],         secondary:['tile_shop','paint_store'],                                                  reject:['supermarket','furniture_store'],                               radius:2500, top:10 },
-  concessionaria: { name:'Concessionária de Veículos',  primary:['car_dealer','auto_dealer','used_car_dealer'],                              secondary:['car_rental','auto_repair_shop'],                                            reject:['gas_station','parking_garage'],                                radius:3000, top:8 },
-  oficina:        { name:'Oficina / Auto Reparo',       primary:['auto_repair_shop','car_repair_shop','mechanic','car_repair'],              secondary:['auto_parts_store','gas_station'],                                           reject:['car_dealer','car_rental'],                                     radius:1500, top:10 },
-  lavajato:       { name:'Lava-Jato / Estacionamento',  primary:['car_wash','parking_garage'],                                               secondary:['auto_repair_shop','gas_station'],                                           reject:['clothing_store'],                                              radius:1200, top:10 },
-  hotel:          { name:'Hotel / Pousada',             primary:['hotel','lodging','bed_and_breakfast'],                                     secondary:['motel','hostel','resort'],                                                  reject:['restaurant','bar','shopping_mall'],                            radius:2000, top:10 },
-  agencia_viagens:{ name:'Agência de Viagens',          primary:['travel_agency'],                                                           secondary:['hotel','tour_operator'],                                                    reject:['restaurant','bar'],                                            radius:2000, top:8 },
-  clinica:        { name:'Clínica / Consultório Médico',primary:['clinic','doctor','health_service'],                                        secondary:['hospital','physical_therapy_center'],                                       reject:['pharmacy','gym'],                                              radius:2000, top:10 },
-  dentista:       { name:'Consultório Odontológico',    primary:['dentist','dental_clinic'],                                                 secondary:['clinic','orthodontist'],                                                    reject:['pharmacy','hospital'],                                         radius:1500, top:10 },
-  psicologo:      { name:'Psicólogo',                   primary:['psychologist','psychiatrist'],                                             secondary:['clinic','wellness_center'],                                                 reject:['pharmacy','hospital'],                                         radius:2000, top:8 },
-  escola:         { name:'Escola',                      primary:['school','elementary_school','high_school'],                                secondary:['university','educational_institution'],                                     reject:['library','daycare'],                                           radius:3000, top:10 },
-  cursos:         { name:'Cursos / Academia',           primary:['education','language_school','driving_school'],                            secondary:['school','university'],                                                      reject:['gym','library'],                                               radius:2000, top:10 },
-  cinema:         { name:'Cinema',                      primary:['movie_theater','cinema'],                                                  secondary:['amusement_park','entertainment'],                                           reject:['bar','nightclub'],                                             radius:2500, top:8 },
-  boliche:        { name:'Boliche / Entretenimento',    primary:['bowling_alley','recreation_center'],                                       secondary:['amusement_park','arcade'],                                                  reject:['bar','nightclub'],                                             radius:2000, top:8 },
-  otica:          { name:'Ótica / Óculos',              primary:['optician'],                                                                secondary:['health','store'],                                                           reject:['restaurant','supermarket','hotel','bar'],                      radius:2000, top:10 },
-  petshop:        { name:'Pet Shop / Veterinário',      primary:['pet_store','veterinary_care'],                                             secondary:['store'],                                                                    reject:['restaurant','supermarket','clothing_store','hotel'],           radius:2000, top:10 }
+  comida:         { name:'Alimentação',         primary:['restaurant','food','cafe','bakery','meal_takeaway'],        secondary:['store'], reject:['lodging','clothing_store','car_repair'], radius:3000, top:10 },
+  automoveis:     { name:'Automóveis',          primary:['car_repair','car_dealer','car_wash'],                       secondary:['store'], reject:['restaurant','food','lodging'],           radius:4000, top:10 },
+  saude:          { name:'Saúde / Bem-Estar',   primary:['health','doctor','dentist','hospital','pharmacy'],          secondary:['store'], reject:['restaurant','food','lodging'],           radius:3000, top:10 },
+  beleza:         { name:'Beleza',              primary:['beauty_salon','hair_care','spa'],                           secondary:['store'], reject:['restaurant','food','lodging'],           radius:3000, top:10 },
+  varejo:         { name:'Comércio Varejista',  primary:['store','clothing_store','electronics_store','supermarket'], secondary:['point_of_interest'], reject:['restaurant','lodging'],      radius:3000, top:10 },
+  servicos:       { name:'Serviços Profissionais', primary:['lawyer','accounting','real_estate_agency','plumber','electrician','general_contractor'], secondary:['establishment'], reject:['restaurant','store'], radius:4000, top:10 },
+  educacao:       { name:'Educação',            primary:['school','university','primary_school','secondary_school'],  secondary:['library'], reject:['restaurant','store','lodging'],        radius:4000, top:10 },
+  hospedagem:     { name:'Hotelaria',           primary:['lodging','hotel','campground'],                             secondary:['travel_agency'], reject:['restaurant','school'],           radius:5000, top:10 },
+  entretenimento: { name:'Entretenimento',      primary:['amusement_park','movie_theater','night_club','bowling_alley'], secondary:['tourist_attraction'], reject:['school','health'], radius:5000, top:10 },
+  imoveis:        { name:'Imóveis',             primary:['real_estate_agency','general_contractor','home_improvement_store'], secondary:['establishment'], reject:['restaurant','food'], radius:4000, top:10 },
+  industria:      { name:'Indústria / B2B',     primary:[], secondary:['establishment','point_of_interest'], reject:['restaurant','lodging','school','cafe'], radius:6000, top:10 },
+  pet:            { name:'Pet / Veterinário',   primary:['pet_store','veterinary_care'], secondary:['store'], reject:['restaurant','clothing_store','lodging'], radius:3000, top:10 },
+  tecnologia:     { name:'Tecnologia',          primary:['electronics_store'], secondary:['establishment','point_of_interest'], reject:['restaurant','lodging','beauty_salon'], radius:4000, top:10 }
 };
 
 function detectCategoryByName(name) {
   const n = (name || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
-  if (/acai|sorvete|frozen|gelato|yogurt/.test(n)) return 'acai';
-  if (/pizza|pizzaria/.test(n)) return 'pizzaria';
-  if (/padaria|confeit|bolo|bakery/.test(n)) return 'padaria';
-  if (/\bhotel\b|pousada|hostel|motel/.test(n)) return 'hotel';
-  if (/\bbar\b|pub|boteco/.test(n)) return 'bar';
-  if (/sushi|japones|japao|temaki|yakisoba/.test(n)) return 'sushi';
-  if (/churrasco|steakhouse|espeto|churrascaria/.test(n)) return 'churrascaria';
-  if (/lanchon|hamburguer|burguer|burger|sanduiche|lanche/.test(n)) return 'lanchonete';
-  if (/\bcafe\b|cafeteria|coffee/.test(n)) return 'cafe';
-  if (/salao|cabelei|cabelo|beleza|hair/.test(n)) return 'salao';
-  if (/barbe/.test(n)) return 'barbearia';
-  if (/manicure|pedicure|unhas|nail/.test(n)) return 'manicure';
-  if (/academia|fitness|gym|musculacao/.test(n)) return 'academia';
-  if (/spa|massagem|estetica/.test(n)) return 'spa';
-  if (/pneu|borracha|tire/.test(n)) return 'pneus';
-  if (/farmacia|drogaria|droga/.test(n)) return 'farmacia';
-  if (/supermercado|mercado|mercadin/.test(n)) return 'supermercado';
-  if (/dentist|odonto|dental/.test(n)) return 'dentista';
-  if (/clinica|medic|saude|health/.test(n)) return 'clinica';
-  if (/imobili|imoveis|corret/.test(n)) return 'imoveis';
-  if (/oficina|mecanica|autocentro/.test(n)) return 'oficina';
-  if (/lava.?jato|lavagem/.test(n)) return 'lavajato';
-  if (/estacion/.test(n)) return 'lavajato';
-  if (/escola|colegio|autoescola|auto\s?escola/.test(n)) return 'escola';
-  if (/curso|treinamento/.test(n)) return 'cursos';
-  if (/otica|oculos|optica/.test(n)) return 'otica';
-  if (/pet|veterinar/.test(n)) return 'petshop';
+  if (/pizza|burg|restaurante|sushi|churrasc|padaria|doces|cafe|lanch|acai|sorvete/.test(n)) return 'comida';
+  if (/oficina|pneu|lava.?jato|auto.?pe|mecanica|veiculo|carro|moto|caminhao|implemento|trator/.test(n)) return 'automoveis';
+  if (/clinica|medic|odonto|dentist|farmacia|saude|hospital/.test(n)) return 'saude';
+  if (/salao|cabelei|beleza|estetica|unhas|manicure|spa|barbearia/.test(n)) return 'beleza';
+  if (/loja|otica|supermercado|roupa|calcado|eletronic|material|construcao|mercado/.test(n)) return 'varejo';
+  if (/advogad|contabil|corretor|engenharia|seguros|assistencia|consultoria/.test(n)) return 'servicos';
+  if (/escola|curso|colegio|faculdade|universidade|treinamento|idiomas/.test(n)) return 'educacao';
+  if (/hotel|pousada|resort|hostel|motel/.test(n)) return 'hospedagem';
+  if (/cinema|teatro|boliche|clube|festa/.test(n)) return 'entretenimento';
+  if (/imobiliaria|imoveis|construtora/.test(n)) return 'imoveis';
+  if (/industria|fabrica|usinagem|distribuidora|ferramentas|pecas/.test(n)) return 'industria';
+  if (/pet|veterinar/.test(n)) return 'pet';
+  if (/software|tecnologia|sistemas|ti|informatica/.test(n)) return 'tecnologia';
   return null;
 }
 
@@ -1450,8 +1414,8 @@ async function loadCompetitors() {
   let keyword = '';
   
   if (APP.subsegment) {
-    const baseCat = catConfig ? catConfig.name.split('/')[0].trim() : '';
-    keyword = `${baseCat} ${APP.subsegment}`.trim();
+    // Confia 100% no subnicho que o usuário digitou sem concatenar a macrocategoria (pra não confundir o Google Places)
+    keyword = APP.subsegment.trim();
   } else if (catConfig && catConfig.primary.length > 0) {
     keyword = catConfig.primary[0].replace(/_/g, ' ');
   } else if (validTypes.length > 0) {
@@ -1472,6 +1436,8 @@ async function loadCompetitors() {
         validRivals = validRivals.filter(r => {
           const types = r.types || [];
           if (types.some(t => catConfig.reject.includes(t))) return false;
+          // Se tiver subsegmento, relaxa o filtro primário/secundário e confia no Google. Muitas empresas B2B caem só como "establishment"
+          if (APP.subsegment) return true;
           return types.some(t => catConfig.primary.includes(t) || catConfig.secondary.includes(t));
         });
       } else if (validTypes.length > 0) {
