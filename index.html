@@ -714,6 +714,8 @@ function detectCategoryByName(name) {
   if (/oficina|mecanica|autocentro/.test(n)) return 'oficina';
   if (/lava.?jato|lavagem/.test(n)) return 'lavajato';
   if (/estacion/.test(n)) return 'lavajato';
+  if (/escola|colegio|autoescola|auto\s?escola/.test(n)) return 'escola';
+  if (/curso|treinamento/.test(n)) return 'cursos';
   return null;
 }
 
@@ -1452,11 +1454,19 @@ async function loadCompetitors() {
   if (!biz || !biz.lat) return;
   
   const catConfig = CATEGORY_MAP[APP.segment];
-  const searchRadius = catConfig?.radius || 2000;
+  const searchRadius = catConfig?.radius || 3000;
   
-  const keyword = catConfig && catConfig.primary.length > 0
-    ? catConfig.primary[0].replace(/_/g, ' ')
-    : (biz.types?.filter(t => !['establishment','point_of_interest','store','food','health'].includes(t))[0] || '').replace(/_/g,' ') || biz.name;
+  // CORREÇÃO: Se não achar categoria, não pode usar o nome completo da empresa senão o Google só acha ela mesma.
+  // Pega a primeira palavra (ex: "Autoescola Jockey" -> "Autoescola")
+  const validTypes = biz.types?.filter(t => !['establishment','point_of_interest','store','food','health'].includes(t)) || [];
+  let keyword = '';
+  if (catConfig && catConfig.primary.length > 0) {
+    keyword = catConfig.primary[0].replace(/_/g, ' ');
+  } else if (validTypes.length > 0) {
+    keyword = validTypes[0].replace(/_/g, ' ');
+  } else {
+    keyword = biz.name.split(' ')[0]; // Pega só o primeiro nome, pra forçar o segmento
+  }
 
   const nearUrl = `/api/places?action=nearby&lat=${biz.lat}&lng=${biz.lng}&keyword=${encodeURIComponent(keyword)}&radius=${searchRadius}`;
   try {
@@ -1471,6 +1481,12 @@ async function loadCompetitors() {
           const types = r.types || [];
           if (types.some(t => catConfig.reject.includes(t))) return false;
           return types.some(t => catConfig.primary.includes(t) || catConfig.secondary.includes(t));
+        });
+      } else if (validTypes.length > 0) {
+        // Fallback: se não tiver no dicionário, filtra concorrentes que tenham pelo menos um tipo parecido
+        validRivals = validRivals.filter(r => {
+          const types = r.types || [];
+          return types.some(t => validTypes.includes(t));
         });
       }
 
