@@ -991,34 +991,27 @@ function calcScore(biz) {
   if (r >= 4.8) s += 20;
   else if (r >= 4.5) s += 14;
   else if (r >= 4.0) s += 7;
-  else if (r >= 3.5) s += 2;
   else if (r > 0) s -= 5;
 
-  // VOLUME DE AVALIAÇÕES (max 15) — menos de 150 é muito ruim
+  // VOLUME DE AVALIAÇÕES (max 15) — avalia o tamanho da reputação
   if (t >= 500) s += 15;
-  else if (t >= 300) s += 11;
   else if (t >= 150) s += 7;
-  else if (t >= 80) s += 3;
-  else if (t >= 30) s += 1;
-  if (t < 150) s -= 10;
-  if (t < 30)  s -= 5;
+  if (t > 0 && t < 150) s -= 10;
+  if (t === 0) s -= 15;
 
   // RECÊNCIA DAS AVALIAÇÕES (max 25) — critério mais importante
-  // "Recente" = últimos 30 dias. "Muito recente" = últimos 15 dias.
   const rev15 = reviews.filter(rv => (now - rv.time) <= 15 * 86400).length;
-  const rev30 = reviews.filter(rv => (now - rv.time) <= 30 * 86400).length;
   let mostRecentDays = Infinity;
   if (reviews.length > 0) {
     const latest = Math.max(...reviews.map(rv => rv.time));
     mostRecentDays = (now - latest) / 86400;
   }
 
-  if (rev15 >= 3)               s += 25;
-  else if (rev15 >= 1)          s += 15;
-  else if (rev30 >= 1)          s += 8;
-  else if (mostRecentDays <= 60)  s -= 10;
-  else if (mostRecentDays <= 180) s -= 20;
-  else                            s -= 28;
+  if (rev15 >= 8)               s += 25;
+  else if (rev15 >= 3)          s += 15;
+  
+  if (mostRecentDays > 90)      s -= 23;
+  else if (mostRecentDays > 30) s -= 15;
 
   // RESPOSTAS A AVALIAÇÕES (max 12)
   const withReply = reviews.filter(rv => rv.owner_reply?.text).length;
@@ -1030,12 +1023,10 @@ function calcScore(biz) {
     else                       s -= 8;
   }
 
-  // FOTOS (max 10) — menos de 20 fotos penaliza
-  if (p >= 30)     s += 10;
-  else if (p >= 20) s += 6;
-  else if (p >= 10) s += 2;
-  if (p < 20) s -= 7;
-  if (p < 5)  s -= 4;
+  // FOTOS (max 10) — Mídia atualizada engaja mais cliques
+  if (p >= 20) s += 10;
+  if (p > 0 && p < 20) s -= 7;
+  if (p === 0) s -= 10;
 
   // COMPLETUDE DO PERFIL (max 18)
   if (biz.formatted_phone_number)       s += 6;
