@@ -373,37 +373,45 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
               <input type="text" class="input-field" id="s_bizCity" placeholder="Ex: São Paulo, SP" />
             </div>
           </div>
-          <div class="field-group mb-2">
-            <label class="field-label">Segmento do negócio <span style="color:var(--text2);font-weight:400;font-size:10px">(filtra concorrentes do mesmo nicho)</span></label>
-            <select class="input-field" id="s_bizSegment">
-              <option value="">Detectar automaticamente pelos dados do Google</option>
-              <option value="acai">Açaí / Sorveteria</option>
-              <option value="padaria">Padaria / Confeitaria</option>
-              <option value="cafe">Café / Cafeteria</option>
-              <option value="pizzaria">Pizzaria</option>
-              <option value="restaurante">Restaurante</option>
-              <option value="lanchonete">Lanchonete / Fast Food</option>
-              <option value="sushi">Sushi / Japonês</option>
-              <option value="churrascaria">Churrascaria / Steakhouse</option>
-              <option value="bar">Bar / Pub</option>
-              <option value="salao">Salão de Beleza / Cabeleireiro</option>
-              <option value="barbearia">Barbearia</option>
-              <option value="manicure">Manicure / Salão de Unhas</option>
-              <option value="spa">Spa / Massagem</option>
-              <option value="academia">Academia / Fitness</option>
-              <option value="hotel">Hotel / Pousada</option>
-              <option value="clinica">Clínica / Consultório Médico</option>
-              <option value="dentista">Dentista / Odontologia</option>
-              <option value="farmacia">Farmácia / Drogaria</option>
-              <option value="supermercado">Supermercado / Mercado</option>
-              <option value="roupas">Loja de Roupas / Vestuário</option>
-              <option value="eletronicos">Eletrônicos / Informática</option>
-              <option value="imoveis">Imobiliária</option>
-              <option value="oficina">Oficina / Auto Reparo</option>
-              <option value="pneus">Pneus / Borracharia</option>
-              <option value="escola">Escola / Educação</option>
-              <option value="lavajato">Lava-Jato / Estacionamento</option>
-            </select>
+          <div class="grid-2 mb-2" style="gap:12px">
+            <div class="field-group">
+              <label class="field-label">Segmento <span style="color:var(--text2);font-weight:400;font-size:10px">(opcional)</span></label>
+              <select class="input-field" id="s_bizSegment">
+                <option value="">Auto-detectar (Google)</option>
+                <option value="acai">Açaí / Sorveteria</option>
+                <option value="padaria">Padaria / Confeitaria</option>
+                <option value="cafe">Café / Cafeteria</option>
+                <option value="pizzaria">Pizzaria</option>
+                <option value="restaurante">Restaurante</option>
+                <option value="lanchonete">Lanchonete / Fast Food</option>
+                <option value="sushi">Sushi / Japonês</option>
+                <option value="churrascaria">Churrascaria / Steakhouse</option>
+                <option value="bar">Bar / Pub</option>
+                <option value="salao">Salão de Beleza / Cabeleireiro</option>
+                <option value="barbearia">Barbearia</option>
+                <option value="manicure">Manicure / Salão de Unhas</option>
+                <option value="spa">Spa / Massagem</option>
+                <option value="academia">Academia / Fitness</option>
+                <option value="hotel">Hotel / Pousada</option>
+                <option value="clinica">Clínica / Consultório Médico</option>
+                <option value="dentista">Dentista / Odontologia</option>
+                <option value="farmacia">Farmácia / Drogaria</option>
+                <option value="supermercado">Supermercado / Mercado</option>
+                <option value="roupas">Loja de Roupas / Vestuário</option>
+                <option value="eletronicos">Eletrônicos / Informática</option>
+                <option value="imoveis">Imobiliária</option>
+                <option value="oficina">Oficina / Auto Reparo</option>
+                <option value="pneus">Pneus / Borracharia</option>
+                <option value="escola">Escola / Educação</option>
+                <option value="lavajato">Lava-Jato / Estacionamento</option>
+                <option value="otica">Ótica / Óculos</option>
+                <option value="petshop">Pet Shop / Veterinário</option>
+              </select>
+            </div>
+            <div class="field-group">
+              <label class="field-label">Subnicho Específico <span style="color:var(--text2);font-weight:400;font-size:10px">(opcional)</span></label>
+              <input type="text" class="input-field" id="s_bizSubSegment" placeholder="Ex: Emagrecimento, Kids..." />
+            </div>
           </div>
 
 
@@ -811,6 +819,7 @@ async function doSearch() {
   const name = document.getElementById('s_bizName').value.trim();
   const city = document.getElementById('s_bizCity').value.trim();
   const segmentSel = document.getElementById('s_bizSegment').value.trim();
+  const subSegment = document.getElementById('s_bizSubSegment')?.value.trim() || '';
   document.getElementById('searchError').style.display = 'none';
   if (!name) return showSearchError('Informe o nome do negócio.');
 
@@ -860,6 +869,7 @@ async function doSearch() {
     // Detectar segmento: usar seleção do usuário ou auto-detectar pelos tipos do Google
     const detectedCategory = segmentSel || detectCategory(biz.types || [], biz.name);
     APP.segment = detectedCategory;
+    APP.subsegment = subSegment;
     const catConfig = CATEGORY_MAP[detectedCategory];
     const searchRadius = catConfig?.radius || 2000;
 
@@ -1455,7 +1465,11 @@ async function loadCompetitors() {
   // Pega a primeira palavra (ex: "Autoescola Jockey" -> "Autoescola")
   const validTypes = biz.types?.filter(t => !['establishment','point_of_interest','store','food','health'].includes(t)) || [];
   let keyword = '';
-  if (catConfig && catConfig.primary.length > 0) {
+  
+  if (APP.subsegment) {
+    const baseCat = catConfig ? catConfig.name.split('/')[0].trim() : '';
+    keyword = `${baseCat} ${APP.subsegment}`.trim();
+  } else if (catConfig && catConfig.primary.length > 0) {
     keyword = catConfig.primary[0].replace(/_/g, ' ');
   } else if (validTypes.length > 0) {
     keyword = validTypes[0].replace(/_/g, ' ');
