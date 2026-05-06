@@ -28,7 +28,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 
 /* LAYOUT */
 .app { display: flex; min-height: 100vh; }
-.sidebar { width: 240px; background: #111; flex-shrink: 0; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; overflow-y: auto; }
+.sidebar { width: 240px; background: #111; flex-shrink: 0; display: flex; flex-direction: column; position: fixed; top: 0; left: 0; bottom: 0; z-index: 100; overflow-y: auto; overflow-x: hidden; }
 .main-content { margin-left: 240px; flex: 1; min-width: 0; }
 
 /* SIDEBAR */
@@ -69,8 +69,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 .grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
 .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-@media (max-width: 900px) { .grid-4 { grid-template-columns: repeat(2, 1fr); } .grid-3 { grid-template-columns: 1fr 1fr; } }
-@media (max-width: 640px) { .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; } .main-content { margin-left: 0; } .sidebar { transform: translateX(-100%); } }
+/* Grid breakpoints handled in mobile media query below */
 
 /* METRICS */
 .metric-card { background: var(--bg3); border-radius: 8px; padding: 14px 16px; }
@@ -255,6 +254,158 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 ::-webkit-scrollbar { width: 5px; height: 5px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(0,0,0,.15); border-radius: 3px; }
+
+/* ===== MOBILE ELEMENTS (hidden by default) ===== */
+.mobile-menu-btn { display: none; width: 44px; height: 44px; border-radius: 9px; border: none; background: transparent; cursor: pointer; align-items: center; justify-content: center; flex-shrink: 0; color: var(--text); -webkit-tap-highlight-color: transparent; }
+.mobile-menu-btn:hover { background: var(--bg3); }
+.sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.55); z-index: 199; opacity: 0; pointer-events: none; transition: opacity .25s; }
+.sidebar-overlay.show { opacity: 1; pointer-events: all; }
+.sidebar-close-btn { display: none; }
+.bottom-nav { display: none; }
+
+/* ===== RESPONSIVE: TABLET ===== */
+@media (max-width: 900px) {
+  .grid-4 { grid-template-columns: repeat(2,1fr); }
+  .grid-3 { grid-template-columns: 1fr 1fr; }
+}
+
+/* ===== RESPONSIVE: MOBILE ===== */
+@media (max-width: 768px) {
+  /* Sidebar → drawer slide-in */
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform .28s cubic-bezier(.4,0,.2,1);
+    z-index: 300;
+    width: 272px;
+    box-shadow: 8px 0 40px rgba(0,0,0,.5);
+    position: fixed;
+  }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-overlay { display: block; }
+  .sidebar-close-btn {
+    display: flex; position: absolute; top: 18px; right: 14px;
+    width: 34px; height: 34px; border-radius: 50%;
+    background: rgba(255,255,255,.15); border: none; cursor: pointer;
+    align-items: center; justify-content: center; color: rgba(255,255,255,.85);
+    box-shadow: 0 2px 8px rgba(0,0,0,.3);
+    -webkit-tap-highlight-color: transparent;
+  }
+  .sidebar-close-btn svg { width: 18px; height: 18px; }
+
+  /* Main layout */
+  .main-content { margin-left: 0; }
+
+  /* Topbar */
+  .mobile-menu-btn { display: flex; }
+  .topbar { padding: 0 12px 0 2px; height: 54px; }
+  .topbar-title { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+  #topbarBizName { display: none; }
+  .topbar-actions { gap: 6px; }
+  .topbar-actions .btn-outline { display: none; }
+
+  /* Pages — bottom padding for bottom nav */
+  .page { padding: 14px 14px calc(64px + env(safe-area-inset-bottom,0px)); }
+
+  /* Titles */
+  .page-title { font-size: 18px; }
+  .page-sub { font-size: 12px; }
+  .section-header { flex-wrap: wrap; gap: 10px; margin-bottom: 14px; }
+
+  /* Grids */
+  .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr !important; gap: 12px; }
+
+  /* Cards */
+  .card { padding: 14px; }
+  .card + .card { margin-top: 12px; }
+
+  /* Inputs — 16px stops iOS auto-zoom */
+  .input-field { height: 48px; font-size: 16px; border-radius: 10px; }
+  select.input-field { font-size: 16px; }
+  .btn { min-height: 44px; border-radius: 9px; }
+  .btn-sm { min-height: 38px; height: 38px; }
+  .btn-lg { height: 52px; font-size: 15px; border-radius: 12px; }
+
+  /* Metrics */
+  .metric-card { padding: 14px; }
+  .metric-value { font-size: 24px; }
+
+  /* Setup form */
+  .setup-card { max-width: 100%; }
+
+  /* Score ring */
+  .score-ring-wrap { width: 80px; height: 80px; }
+  .score-ring-number { font-size: 19px; }
+
+  /* Competitor table scroll */
+  .comp-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border-radius: 8px; }
+  .comp-table { min-width: 480px; font-size: 12px; }
+  .comp-table th, .comp-table td { padding: 7px 8px; white-space: nowrap; }
+
+  /* Proposal */
+  .proposal-preview { padding: 18px; }
+  .proposal-header { flex-direction: column; gap: 14px; }
+
+  /* Tabs — horizontal scroll */
+  .tabs { overflow-x: auto; flex-wrap: nowrap; -webkit-overflow-scrolling: touch; padding-bottom: 2px; }
+  .tab-btn { white-space: nowrap; padding: 9px 14px; }
+
+  /* Review cards */
+  .review-card { padding: 11px 12px; }
+  .review-stars { flex-wrap: wrap; }
+
+  /* Check items */
+  .check-item { flex-wrap: wrap; }
+
+  /* Loading box */
+  .loading-box { margin: 16px; max-width: calc(100vw - 32px); padding: 24px 20px; }
+
+  /* Empty state */
+  .empty-state { padding: 32px 16px; }
+  .empty-icon { font-size: 36px; }
+  .empty-title { font-size: 15px; }
+
+  /* Bottom nav bar */
+  .bottom-nav {
+    display: flex;
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    height: calc(56px + env(safe-area-inset-bottom,0px));
+    padding-bottom: env(safe-area-inset-bottom,0px);
+    background: #0E0E0E;
+    border-top: 1px solid rgba(255,255,255,.1);
+    z-index: 150;
+  }
+  .bottom-nav-item {
+    flex: 1; display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 3px; color: rgba(255,255,255,.38);
+    font-size: 9.5px; font-weight: 700; letter-spacing: .2px;
+    text-transform: uppercase; cursor: pointer;
+    border: none; background: transparent;
+    transition: color .15s, background .15s;
+    padding: 6px 2px 4px;
+    -webkit-tap-highlight-color: transparent;
+    border-radius: 10px; margin: 4px 2px;
+  }
+  .bottom-nav-item svg { width: 22px; height: 22px; }
+  .bottom-nav-item.active { color: #5DCAA5; }
+  .bottom-nav-item:active { background: rgba(255,255,255,.06); }
+
+  /* Heatmap search row */
+  .heatmap-kw-row { flex-direction: column !important; gap: 8px !important; }
+  .heatmap-kw-row input { width: 100% !important; }
+
+  /* Hide large topbar btn, show icon-only PDF */
+  #pdfBtn { font-size: 0; padding: 0 10px; }
+  #pdfBtn::after { content: 'PDF'; font-size: 12px; }
+
+  /* Biz list items */
+  .biz-list-name { font-size: 13px; }
+  .biz-list-sub { font-size: 11px; }
+
+  /* Page setup card */
+  #page-setup .card { border-radius: 14px; }
+}
 </style>
 </head>
 <body>
@@ -270,8 +421,14 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 </div>
 
 <div class="app">
+  <!-- Sidebar overlay (mobile) -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
   <!-- SIDEBAR -->
-  <div class="sidebar">
+  <div class="sidebar" id="appSidebar">
+    <button class="sidebar-close-btn" onclick="closeSidebar()" aria-label="Fechar menu">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+    </button>
     <div class="sidebar-logo">
       <div class="logo-icon">
         <svg viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
@@ -341,7 +498,10 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
   <!-- MAIN CONTENT -->
   <div class="main-content">
     <div class="topbar">
-      <div class="topbar-title" id="topbarTitle">GBP Pro — Google Business Analytics</div>
+      <button class="mobile-menu-btn" onclick="toggleSidebar()" aria-label="Menu">
+        <svg viewBox="0 0 24 24" fill="currentColor" width="22" height="22"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+      </button>
+      <div class="topbar-title" id="topbarTitle">GBP Pro</div>
       <div class="topbar-actions">
         <span id="topbarBizName" class="text-muted text-small"></span>
         <button class="btn btn-outline btn-sm" onclick="goPage('setup')">+ Nova Busca</button>
@@ -526,7 +686,7 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
     <div class="page" id="page-heatmap">
       <div class="section-header" style="flex-wrap:wrap;gap:15px">
         <div><div class="page-title">Mapa de Calor SEO (Grid Tracking)</div><div class="page-sub">Rastreamento de ranking em múltiplos pontos ao redor da empresa</div></div>
-        <div style="display:flex;gap:10px;align-items:center">
+        <div class="heatmap-kw-row" style="display:flex;gap:10px;align-items:center">
           <input type="text" id="heatmap_keyword" placeholder="Qual palavra-chave buscar?" class="input-field" style="width:250px">
           <button class="btn btn-primary btn-sm" onclick="generateHeatmap()">🚀 Gerar Mapa</button>
         </div>
@@ -617,6 +777,30 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
       </div>
     </div>
   </div>
+
+  <!-- BOTTOM NAV (mobile only) -->
+  <nav class="bottom-nav" aria-label="Navegação principal">
+    <button class="bottom-nav-item active" data-page="setup" onclick="goPage('setup')" aria-label="Início">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+      Início
+    </button>
+    <button class="bottom-nav-item" data-page="dashboard" onclick="goPage('dashboard')" aria-label="Dashboard">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/></svg>
+      Dashboard
+    </button>
+    <button class="bottom-nav-item" data-page="reviews" onclick="goPage('reviews')" aria-label="Reputação">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+      Reputação
+    </button>
+    <button class="bottom-nav-item" data-page="competitors" onclick="goPage('competitors')" aria-label="Concorrentes">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5c-1.66 0-3 1.34-3 3s1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5C6.34 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg>
+      Concorr.
+    </button>
+    <button class="bottom-nav-item" onclick="toggleSidebar()" aria-label="Menu completo">
+      <svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg>
+      Menu
+    </button>
+  </nav>
 </div>
 
 <script>
@@ -928,13 +1112,34 @@ function updateApiStatus() {
 /* ===========================
    NAVIGATION
    =========================== */
+/* ===== MOBILE SIDEBAR ===== */
+function toggleSidebar() {
+  const sidebar = document.getElementById('appSidebar');
+  const overlay = document.getElementById('sidebarOverlay');
+  const isOpen = sidebar.classList.contains('open');
+  sidebar.classList.toggle('open', !isOpen);
+  overlay.classList.toggle('show', !isOpen);
+  document.body.style.overflow = isOpen ? '' : 'hidden';
+}
+function closeSidebar() {
+  document.getElementById('appSidebar').classList.remove('open');
+  document.getElementById('sidebarOverlay').classList.remove('show');
+  document.body.style.overflow = '';
+}
+
 function goPage(name) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + name).classList.add('active');
   document.querySelector('[data-page="' + name + '"]')?.classList.add('active');
-  const titles = { setup:'Início', dashboard:'Dashboard', checklist:'Checklist', reviews:'Reputação & IA', competitors:'Concorrentes', heatmap:'Mapa de Calor', history:'Antes x Depois', proposal:'Proposta', manage:'Clientes', settings:'Config' };
-  document.getElementById('topbarTitle').textContent = 'GBP Pro — ' + (titles[name] || name);
+  // Update bottom nav
+  document.querySelectorAll('.bottom-nav-item[data-page]').forEach(b => {
+    b.classList.toggle('active', b.dataset.page === name);
+  });
+  // Close sidebar on mobile after navigation
+  closeSidebar();
+  const titles = { setup:'Início', dashboard:'Dashboard', checklist:'Checklist', reviews:'Reputação & IA', competitors:'Concorrentes', heatmap:'Mapa de Calor SEO', history:'Antes x Depois', proposal:'Proposta Comercial', manage:'Gestão de Clientes', settings:'Configurações' };
+  document.getElementById('topbarTitle').textContent = titles[name] || 'GBP Pro';
   if (name === 'competitors' && APP.currentBiz && !APP.competitors.length) loadCompetitors();
   if (name === 'history') renderHistory();
   if (name === 'manage') renderManageList();
