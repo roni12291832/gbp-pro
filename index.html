@@ -6,6 +6,9 @@
 <title>GBP Pro — Sistema de Análise Google Meu Negócio</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
 <style>
 :root {
   --green: #1D9E75; --green-light: #E1F5EE; --green-dark: #0F6E56;
@@ -1293,9 +1296,18 @@ async function doSearch() {
               return types.some(t => catConfig.primary.includes(t) || catConfig.secondary?.includes(t));
             });
           }
+          // Fallback: if strict filter killed all results, use any non-rejected operational nearby biz
+          if (validRivals.length === 0) {
+            validRivals = nearData.results.filter(r => {
+              if (r.place_id === place_id || r.business_status !== 'OPERATIONAL') return false;
+              const types = r.types || [];
+              return !(catConfig?.reject || []).some(t => types.includes(t));
+            });
+          }
           APP.competitors = validRivals.slice(0, catConfig?.top || 10).map(r => ({
             name: r.name, rating: r.rating || 0, total: r.user_ratings_total || 0,
-            address: r.vicinity, place_id: r.place_id, types: r.types, status: r.business_status
+            address: r.vicinity, place_id: r.place_id, types: r.types, status: r.business_status,
+            lat: r.geometry?.location?.lat, lng: r.geometry?.location?.lng
           }));
         }
       } catch(e) { APP.competitors = []; }
@@ -1904,15 +1916,21 @@ async function loadCompetitors() {
         validRivals = validRivals.filter(r => {
           const types = r.types || [];
           if (types.some(t => catConfig.reject.includes(t))) return false;
-          // Se tiver subsegmento customizado, relaxa o filtro primário/secundário e confia no Google
           if (APP.subsegment) return true;
           return types.some(t => catConfig.primary.includes(t) || catConfig.secondary?.includes(t));
         });
       } else if (validTypes.length > 0) {
-        // Fallback: se não tiver no dicionário, filtra concorrentes que tenham pelo menos um tipo parecido
         validRivals = validRivals.filter(r => {
           const types = r.types || [];
           return types.some(t => validTypes.includes(t));
+        });
+      }
+      // Fallback: if strict filter killed all, return all non-rejected nearby businesses
+      if (validRivals.length === 0) {
+        validRivals = nearData.results.filter(r => {
+          if (r.place_id === biz.place_id || r.business_status !== 'OPERATIONAL') return false;
+          const types = r.types || [];
+          return !(catConfig?.reject || []).some(t => types.includes(t));
         });
       }
 
@@ -1946,7 +1964,8 @@ async function loadCompetitors() {
 
       APP.competitors = validRivals.slice(0, catConfig?.top || 10).map(r => ({
         name: r.name, rating: r.rating || 0, total: r.user_ratings_total || 0,
-        address: r.vicinity, place_id: r.place_id, types: r.types, status: r.business_status
+        address: r.vicinity, place_id: r.place_id, types: r.types, status: r.business_status,
+        lat: r.geometry?.location?.lat, lng: r.geometry?.location?.lng
       }));
       renderCompetitors();
     }
@@ -1963,160 +1982,163 @@ async function generateHeatmap() {
   if (!APP.currentBiz) return alert('Analise um negócio primeiro.');
   const biz = APP.currentBiz;
   if (!biz.lat || !biz.lng) return alert('Coordenadas do negócio não encontradas.');
-  
+
   const el = document.getElementById('heatmap_content');
-  el.innerHTML = `<div class="empty-state"><div class="spinner" style="margin:0 auto 12px"></div><div class="empty-title">Gerando Mapa de Calor SEO...</div><div style="font-size:13px;color:var(--text2);margin-top:8px">Simulando buscas nos arredores (Grid Search). Isso pode levar alguns segundos.</div></div>`;
-  
-  const ignoredTypes = ['establishment', 'point_of_interest', 'store', 'food', 'health'];
-  const validTypes = (biz.types || []).filter(t => !ignoredTypes.includes(t));
-  const defaultKeyword = validTypes.length > 0 ? validTypes[0].replace(/_/g, ' ') : biz.name;
+  el.innerHTML = `<div class="empty-state"><div class="spinner" style="margin:0 auto 12px"></div><div class="empty-title">Gerando Mapa de Calor SEO...</div><div style="font-size:13px;color:var(--text2);margin-top:8px">Simulando buscas nos arredores (Grid Search 3×3). Aguarde alguns segundos.</div></div>`;
+
+  const ignoredTypes = ['establishment','point_of_interest','store','food','health'];
+  const validTypes = (biz.types||[]).filter(t => !ignoredTypes.includes(t));
+  const defaultKeyword = validTypes.length > 0 ? validTypes[0].replace(/_/g,' ') : biz.name.split(' ')[0];
   const keyword = document.getElementById('heatmap_keyword').value.trim() || defaultKeyword;
-  document.getElementById('heatmap_keyword').value = keyword; // show what was used
-  
-  // 3x3 Grid (center is biz.lat, biz.lng)
-  const offset = 0.01; // Approx 1km step
+  document.getElementById('heatmap_keyword').value = keyword;
+
+  const offset = 0.01; // ~1 km
   const gridPoints = [
-    {r:0, c:0, lat: biz.lat + offset, lng: biz.lng - offset}, {r:0, c:1, lat: biz.lat + offset, lng: biz.lng}, {r:0, c:2, lat: biz.lat + offset, lng: biz.lng + offset},
-    {r:1, c:0, lat: biz.lat, lng: biz.lng - offset},          {r:1, c:1, lat: biz.lat, lng: biz.lng},          {r:1, c:2, lat: biz.lat, lng: biz.lng + offset},
-    {r:2, c:0, lat: biz.lat - offset, lng: biz.lng - offset}, {r:2, c:1, lat: biz.lat - offset, lng: biz.lng}, {r:2, c:2, lat: biz.lat - offset, lng: biz.lng + offset}
+    {lat:biz.lat+offset, lng:biz.lng-offset}, {lat:biz.lat+offset, lng:biz.lng}, {lat:biz.lat+offset, lng:biz.lng+offset},
+    {lat:biz.lat,        lng:biz.lng-offset}, {lat:biz.lat,        lng:biz.lng}, {lat:biz.lat,        lng:biz.lng+offset},
+    {lat:biz.lat-offset, lng:biz.lng-offset}, {lat:biz.lat-offset, lng:biz.lng}, {lat:biz.lat-offset, lng:biz.lng+offset}
   ];
 
   const resultsGrid = Array(9).fill(null);
+  const heatPointsMap = new Map(); // place_id → {lat, lng, count}
 
   await Promise.all(gridPoints.map(async (pt, i) => {
     try {
       const res = await fetch(`/api/places?action=nearby&lat=${pt.lat}&lng=${pt.lng}&keyword=${encodeURIComponent(keyword)}&radius=2000`);
       const data = await res.json();
       if (data.results) {
-        // Use Google's returned order directly — the API already ranks by prominence/relevance
         const rank = data.results.findIndex(r => r.place_id === biz.place_id);
         resultsGrid[i] = rank === -1 ? '20+' : rank + 1;
+        data.results.forEach(r => {
+          const loc = r.geometry?.location;
+          if (loc) {
+            if (heatPointsMap.has(r.place_id)) heatPointsMap.get(r.place_id).count++;
+            else heatPointsMap.set(r.place_id, { lat: loc.lat, lng: loc.lng, count: 1 });
+          }
+        });
       } else {
         resultsGrid[i] = 'N/A';
       }
-    } catch(e) {
-      resultsGrid[i] = 'Erro';
-    }
+    } catch(e) { resultsGrid[i] = 'Erro'; }
   }));
 
-  // Compute stats
-  const numericRanks = resultsGrid.map(r => (r === '20+' || r === 'N/A' || r === 'Erro') ? 99 : (parseInt(r) || 99));
+  const numericRanks = resultsGrid.map(r => (r==='20+'||r==='N/A'||r==='Erro') ? 99 : (parseInt(r)||99));
   const nonCenterRanks = numericRanks.filter((_,i) => i !== 4);
   const bestRank   = Math.min(...nonCenterRanks);
-  const avgRankRaw = nonCenterRanks.reduce((a,b) => a+b,0) / nonCenterRanks.length;
-  const top3Count  = nonCenterRanks.filter(v => v <= 3).length;
-  const top10Count = nonCenterRanks.filter(v => v <= 10).length;
+  const avgRankRaw = nonCenterRanks.reduce((a,b)=>a+b,0) / nonCenterRanks.length;
+  const top3Count  = nonCenterRanks.filter(v => v<=3).length;
+  const top10Count = nonCenterRanks.filter(v => v<=10).length;
 
-  function heatColor(val) {
-    if (val <= 3)  return { bg:'#1D9E75', border:'#148F66', label:'Top 3', icon:'🏆' };
-    if (val <= 7)  return { bg:'#4CAF7D', border:'#3A9A6A', label:'Boa',   icon:'✅' };
-    if (val <= 10) return { bg:'#E8A020', border:'#C88010', label:'Média',  icon:'⚠️' };
-    if (val <= 15) return { bg:'#D4581A', border:'#B84010', label:'Fraca',  icon:'⬇' };
-    if (val <= 20) return { bg:'#C0392B', border:'#A02020', label:'Ruim',   icon:'✗' };
-    return            { bg:'#922B21', border:'#7B241C', label:'Invisível', icon:'✗' };
+  const bestDisp = bestRank>=99?'20+':bestRank+'º';
+  const avgDisp  = avgRankRaw>=99?'20+':Math.round(avgRankRaw)+'º';
+  const bestCol  = bestRank<=3?'#1D9E75':bestRank<=10?'#E8A020':'#C0392B';
+  const avgCol   = avgRankRaw<=7?'#1D9E75':avgRankRaw<=15?'#E8A020':'#C0392B';
+  const top3Col  = top3Count>0?'#1D9E75':'#C0392B';
+
+  let diagBg,diagCol,diagIcon,diagTitle,diagText;
+  if (top3Count>=5)      { diagBg='#E1F5EE';diagCol='#0F6E56';diagIcon='✅';diagTitle='Excelente visibilidade local!';diagText='O negócio aparece no Top 3 em '+top3Count+'/8 pontos ao redor — presença local muito forte. Continue gerando avaliações e postando atualizações semanais.'; }
+  else if (top3Count>=2) { diagBg='#FAEEDA';diagCol='#7A4B00';diagIcon='⚠️';diagTitle='Visibilidade parcial — pode melhorar';diagText='Visível no Top 3 em apenas '+top3Count+'/8 pontos. Fotos recentes, avaliações consistentes e respostas rápidas ampliam o raio verde.'; }
+  else if (top10Count>=3){ diagBg='#FFF3E0';diagCol='#7A4B00';diagIcon='⬇';diagTitle='Baixa visibilidade — ação necessária';diagText='O negócio aparece fora do Top 3 na maioria dos pontos. Estratégia de avaliações e Google Posts ajudam a subir o ranking.'; }
+  else                   { diagBg='#FCEBEB';diagCol='#791F1F';diagIcon='🔴';diagTitle='Visibilidade crítica — negócio quase invisível';diagText='A empresa não aparece no Top 20 para a maioria dos clientes no raio de 1 km. Check-ins, postagens semanais, avaliações recentes e respostas são urgentes.'; }
+
+  el.innerHTML = `
+    <div class="grid-3" style="margin-bottom:16px">
+      <div class="card" style="text-align:center">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:8px">Pontos no Top 3</div>
+        <div style="font-size:36px;font-weight:900;color:${top3Col};line-height:1">${top3Count}<span style="font-size:16px;color:var(--text3)">/8</span></div>
+        <div style="font-size:11px;color:var(--text2);margin-top:4px">${top3Count===0?'Nenhum ponto visível':top3Count===8?'Todos os pontos!':'pontos com ótima visibilidade'}</div>
+      </div>
+      <div class="card" style="text-align:center">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:8px">Melhor posição</div>
+        <div style="font-size:36px;font-weight:900;color:${bestCol};line-height:1">${bestDisp}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:4px">${bestRank<=3?'No Local Pack do Google':bestRank<=10?'Aparece mas não lidera':'Fora do Top 20'}</div>
+      </div>
+      <div class="card" style="text-align:center">
+        <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:8px">Posição média</div>
+        <div style="font-size:36px;font-weight:900;color:${avgCol};line-height:1">${avgDisp}</div>
+        <div style="font-size:11px;color:var(--text2);margin-top:4px">nos arredores (excl. centro)</div>
+      </div>
+    </div>
+
+    <div class="card" style="padding:0;overflow:hidden;margin-bottom:16px">
+      <div style="padding:13px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
+        <div>
+          <div style="font-size:13px;font-weight:700;color:var(--text)">Mapa de Posicionamento Local</div>
+          <div style="font-size:11px;color:var(--text2)">Busca: <strong style="color:var(--green)">${keyword}</strong> · Calor = concentração de concorrentes · Círculos = posição por ponto do grid</div>
+        </div>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;font-size:10px;font-weight:700;color:var(--text2)">
+          <span style="display:flex;align-items:center;gap:3px"><span style="width:10px;height:10px;border-radius:50%;background:#1D9E75;display:inline-block"></span>1–3</span>
+          <span style="display:flex;align-items:center;gap:3px"><span style="width:10px;height:10px;border-radius:50%;background:#4CAF7D;display:inline-block"></span>4–7</span>
+          <span style="display:flex;align-items:center;gap:3px"><span style="width:10px;height:10px;border-radius:50%;background:#E8A020;display:inline-block"></span>8–10</span>
+          <span style="display:flex;align-items:center;gap:3px"><span style="width:10px;height:10px;border-radius:50%;background:#D4581A;display:inline-block"></span>11–15</span>
+          <span style="display:flex;align-items:center;gap:3px"><span style="width:10px;height:10px;border-radius:50%;background:#922B21;display:inline-block"></span>20+</span>
+          <span style="display:flex;align-items:center;gap:3px;margin-left:4px"><span style="width:10px;height:10px;border-radius:50%;background:#4488FF;display:inline-block"></span>Concorrente</span>
+        </div>
+      </div>
+      <div id="hmMap" style="height:460px;"></div>
+    </div>
+
+    <div style="background:${diagBg};color:${diagCol};border-radius:12px;padding:16px 20px;font-size:13px;line-height:1.6;border-left:4px solid ${diagCol}">
+      <div style="font-weight:800;font-size:14px;margin-bottom:6px">${diagIcon} ${diagTitle}</div>
+      <div>${diagText}</div>
+    </div>
+  `;
+
+  // ---- Leaflet map ----
+  const map = L.map('hmMap', { zoomControl: true }).setView([biz.lat, biz.lng], 14);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+    maxZoom: 19
+  }).addTo(map);
+
+  // Heat layer — competitor density
+  const heatData = [...heatPointsMap.values()].map(p => [p.lat, p.lng, p.count / 9]);
+  if (heatData.length && typeof L.heatLayer === 'function') {
+    L.heatLayer(heatData, {
+      radius: 38, blur: 28, maxZoom: 17, max: 1.0,
+      gradient: { 0.1:'#0000ff', 0.35:'#00ffff', 0.55:'#00ff00', 0.75:'#ffff00', 0.9:'#ff8800', 1.0:'#ff0000' }
+    }).addTo(map);
   }
 
-  const dirs = ['NO','Norte','NE','Oeste','','Leste','SO','Sul','SE'];
-
-  let gridCells = '';
-  resultsGrid.forEach((rank, i) => {
-    if (i === 4) {
-      // Center cell — business location
-      const bizShort = (biz.name||'').split(' ').slice(0,3).join(' ');
-      gridCells += `
-        <div style="border-radius:14px;padding:16px 8px 12px;text-align:center;background:#185FA5;border:3px solid #fff;box-shadow:0 4px 16px rgba(24,95,165,0.45);display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:110px">
-          <div style="font-size:11px;font-weight:800;color:rgba(255,255,255,0.7);letter-spacing:.6px;text-transform:uppercase;margin-bottom:6px">Você</div>
-          <div style="font-size:26px;line-height:1">📍</div>
-          <div style="font-size:9px;color:rgba(255,255,255,0.85);margin-top:6px;font-weight:700;line-height:1.2;max-width:80px;word-break:break-word">${bizShort}</div>
-        </div>`;
-    } else {
-      const val = numericRanks[i];
-      const { bg, border, label, icon } = heatColor(val);
-      const displayRank = (rank === '20+' || val >= 99) ? '20+' : String(val);
-      gridCells += `
-        <div style="border-radius:14px;padding:14px 8px 10px;text-align:center;background:${bg};border:2px solid ${border};box-shadow:0 3px 12px rgba(0,0,0,0.25);display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:110px">
-          <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,0.7);letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px">${dirs[i]}</div>
-          <div style="font-size:32px;font-weight:900;color:#fff;line-height:1">${displayRank}</div>
-          <div style="font-size:10px;color:rgba(255,255,255,0.9);margin-top:5px;font-weight:700">${label}</div>
-        </div>`;
-    }
+  // Competitor markers (from APP.competitors)
+  (APP.competitors||[]).forEach(c => {
+    if (!c.lat || !c.lng) return;
+    L.circleMarker([c.lat, c.lng], {
+      radius: 9, fillColor: '#4488FF', fillOpacity: 0.85, color: '#fff', weight: 2
+    }).addTo(map).bindPopup(`<b>${c.name}</b><br>${c.rating.toFixed(1)} ★ (${c.total} avaliações)`);
   });
 
-  // Stat values
-  const bestDisp   = bestRank >= 99 ? '20+' : bestRank + 'º';
-  const avgDisp    = avgRankRaw >= 99 ? '20+' : Math.round(avgRankRaw) + 'º';
-  const bestCol    = bestRank <= 3 ? '#1D9E75' : bestRank <= 10 ? '#E8A020' : '#C0392B';
-  const avgCol     = avgRankRaw <= 7 ? '#1D9E75' : avgRankRaw <= 15 ? '#E8A020' : '#C0392B';
-  const top3Col    = top3Count > 0 ? '#1D9E75' : '#C0392B';
-
-  let diagBg, diagCol, diagIcon, diagTitle, diagText;
-  if (top3Count >= 5) {
-    diagBg='#E1F5EE'; diagCol='#0F6E56'; diagIcon='✅';
-    diagTitle='Excelente visibilidade local!';
-    diagText='O negócio aparece no Top 3 em '+top3Count+'/8 pontos ao redor — presença local muito forte. Continue gerando avaliações e postando atualizações semanais.';
-  } else if (top3Count >= 2) {
-    diagBg='#FAEEDA'; diagCol='#7A4B00'; diagIcon='⚠️';
-    diagTitle='Visibilidade parcial — pode melhorar';
-    diagText='Visível no Top 3 em apenas '+top3Count+'/8 pontos. Fotos recentes, avaliações consistentes e respostas rápidas ampliam o raio verde.';
-  } else if (top10Count >= 3) {
-    diagBg='#FFF3E0'; diagCol='#7A4B00'; diagIcon='⬇';
-    diagTitle='Baixa visibilidade — ação necessária';
-    diagText='O negócio aparece em posição média no raio de busca (fora do Top 3). Estratégia de avaliações e Google Posts ajudam a subir o ranking.';
-  } else {
-    diagBg='#FCEBEB'; diagCol='#791F1F'; diagIcon='🔴';
-    diagTitle='Visibilidade crítica — negócio quase invisível';
-    diagText='A empresa não aparece no Top 20 para a maioria dos clientes no raio de 1km. Check-ins, postagens semanais, avaliações recentes e respostas são urgentes.';
+  // Grid rank markers
+  function rankBg(v) {
+    if (v<=3) return '#1D9E75'; if (v<=7) return '#4CAF7D';
+    if (v<=10) return '#E8A020'; if (v<=15) return '#D4581A';
+    return '#922B21';
   }
+  const dirs = ['NO','N','NE','O','','L','SO','S','SE'];
+  gridPoints.forEach((pt, i) => {
+    if (i===4) return;
+    const val = numericRanks[i];
+    const rankLabel = val>=99?'20+':String(val);
+    const bg = rankBg(val);
+    L.marker([pt.lat, pt.lng], { icon: L.divIcon({
+      className: '',
+      html: `<div style="width:44px;height:44px;border-radius:50%;background:${bg};border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:0">
+        <span style="font-size:13px;font-weight:900;color:#fff;line-height:1.1">${rankLabel}</span>
+        <span style="font-size:8px;color:rgba(255,255,255,.8);line-height:1">${dirs[i]}</span>
+      </div>`,
+      iconSize:[44,44], iconAnchor:[22,22]
+    })}).addTo(map);
+  });
 
-  let html = `
-  <div class="card" style="margin-bottom:16px">
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:18px">
-      <div>
-        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px">Grid de Posicionamento Local</div>
-        <div style="font-size:12px;color:var(--text2)">Busca simulada: <strong style="color:var(--green)">${keyword}</strong> — raio de ~1km por ponto</div>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap">
-        <span style="background:var(--green);color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px">1–3 Excelente</span>
-        <span style="background:#4CAF7D;color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px">4–7 Boa</span>
-        <span style="background:#E8A020;color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px">8–10 Média</span>
-        <span style="background:#D4581A;color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px">11–15 Fraca</span>
-        <span style="background:#922B21;color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px">20+ Invisível</span>
-      </div>
-    </div>
-
-    <div style="text-align:center;font-size:11px;font-weight:700;color:var(--text3);letter-spacing:1px;margin-bottom:8px">▲ NORTE</div>
-
-    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;background:#E8E6DE;border-radius:18px;padding:16px;border:1px solid var(--border)">
-      ${gridCells}
-    </div>
-
-    <div style="text-align:center;font-size:11px;font-weight:700;color:var(--text3);letter-spacing:1px;margin-top:8px">▼ SUL</div>
-  </div>
-
-  <div class="grid-3" style="margin-bottom:16px">
-    <div class="card" style="text-align:center">
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:8px">Pontos no Top 3</div>
-      <div style="font-size:36px;font-weight:900;color:${top3Col};line-height:1">${top3Count}<span style="font-size:16px;color:var(--text3)">/8</span></div>
-      <div style="font-size:11px;color:var(--text2);margin-top:4px">${top3Count===0?'Nenhum ponto visível':top3Count===8?'Todos os pontos!':'pontos com ótima visibilidade'}</div>
-    </div>
-    <div class="card" style="text-align:center">
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:8px">Melhor posição</div>
-      <div style="font-size:36px;font-weight:900;color:${bestCol};line-height:1">${bestDisp}</div>
-      <div style="font-size:11px;color:var(--text2);margin-top:4px">${bestRank<=3?'No Local Pack do Google':bestRank<=10?'Aparece mas não lidera':'Fora do Top 20'}</div>
-    </div>
-    <div class="card" style="text-align:center">
-      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:8px">Posição média</div>
-      <div style="font-size:36px;font-weight:900;color:${avgCol};line-height:1">${avgDisp}</div>
-      <div style="font-size:11px;color:var(--text2);margin-top:4px">nos arredores (excl. centro)</div>
-    </div>
-  </div>
-
-  <div style="background:${diagBg};color:${diagCol};border-radius:12px;padding:16px 20px;font-size:13px;line-height:1.6;border-left:4px solid ${diagCol}">
-    <div style="font-weight:800;font-size:14px;margin-bottom:6px">${diagIcon} ${diagTitle}</div>
-    <div>${diagText}</div>
-  </div>
-  `;
-  el.innerHTML = html;
+  // Target business pin
+  L.marker([biz.lat, biz.lng], {
+    zIndexOffset: 1000,
+    icon: L.divIcon({
+      className: '',
+      html: `<div style="width:52px;height:52px;border-radius:50%;background:#185FA5;border:4px solid #fff;box-shadow:0 3px 16px rgba(24,95,165,.65);display:flex;align-items:center;justify-content:center;font-size:22px">📍</div>`,
+      iconSize:[52,52], iconAnchor:[26,26]
+    })
+  }).addTo(map).bindPopup(`<b>${biz.name}</b><br><small>Seu negócio</small>`).openPopup();
 
   // Store results for PDF export
   APP.heatmapResults = { keyword, grid: resultsGrid, top3Count, top10Count, bestRank, avgRankRaw };
