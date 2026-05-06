@@ -1127,7 +1127,7 @@ Avaliação: ${biz.rating||'N/A'} (${biz.user_ratings_total||0} reviews no total
 Telefone: ${biz.formatted_phone_number?'SIM':'NÃO'}
 Website: ${biz.website?'SIM':'NÃO'}
 Horários: ${biz.opening_hours?'SIM':'NÃO'}
-Fotos: ${biz.photos?.length||0} (mínimo recomendado: 20)
+Fotos: ${biz.photos?.length||0} (mínimo recomendado: 15)
 Status: ${biz.business_status||'?'}
 Última avaliação detectada: ${recentLabel}
 Avaliações nos últimos 15 dias: ${rev15}
@@ -1206,15 +1206,15 @@ function calcScore(biz) {
   if (biz.opening_hours?.weekday_text)  s += 6;
 
   // 4. RESPOSTAS DO PROPRIETÁRIO (Máx: 15)
-  // Nota: a API retorna amostra de até 5 avaliações — não reflete o total real
+  // A API retorna amostra de até 5 avaliações e NÃO retorna owner_reply de forma confiável.
+  // Bônus quando detectamos respostas; zero penalidade quando não detectamos (limitação da API).
   const withReply = reviews.filter(rv => rv.owner_reply?.text).length;
   const replyRate = reviews.length > 0 ? withReply / reviews.length : 0;
-  if (reviews.length > 0) {
+  if (reviews.length > 0 && withReply > 0) {
     if (replyRate >= 0.8)      s += 15;
     else if (replyRate >= 0.6) s += 10;
     else if (replyRate >= 0.4) s += 6;
-    else if (replyRate >= 0.2) s += 3;
-    else                       s -= 4; // penalidade moderada — pode ser limitação da API
+    else                       s += 3;
   }
 
   // 5. VOLUME DE FOTOS (Máx: 10)
@@ -1255,7 +1255,7 @@ function renderDashboard(biz, score) {
   const r = biz.rating||0, t = biz.user_ratings_total||0, p = biz.photos?.length||0;
   const rC = r>=4?'metric-green':r>=3?'metric-amber':'metric-red';
   const tC = t>=150?'metric-green':t>=80?'metric-amber':'metric-red';
-  const pC = p>=20?'metric-green':p>=10?'metric-amber':'metric-red';
+  const pC = p>=15?'metric-green':p>=8?'metric-amber':'metric-red';
   const compAvgTotal = APP.competitors.length > 0
     ? Math.round(APP.competitors.reduce((a,b) => a+(b.total||0),0) / APP.competitors.length)
     : null;
@@ -1266,7 +1266,7 @@ function renderDashboard(biz, score) {
   document.getElementById('db_metrics').innerHTML = `
     <div class="metric-card"><div class="metric-label">Avaliação Google</div><div class="metric-value ${rC}">${r>0?r.toFixed(1):'N/A'}</div><div class="metric-sub">${r>0?stars(r):''} ${t>0?'('+t+')':''}</div></div>
     <div class="metric-card"><div class="metric-label">Nº de avaliações</div><div class="metric-value ${tC}">${t.toLocaleString('pt-BR')}</div><div class="metric-sub">${tSub}</div></div>
-    <div class="metric-card"><div class="metric-label">Fotos públicas</div><div class="metric-value ${pC}">${p}</div><div class="metric-sub">${p>=20?'Galeria adequada':p>=10?'Insuficiente (<20)':p===0?'Nenhuma':'Crítico (<10)'}</div></div>
+    <div class="metric-card"><div class="metric-label">Fotos públicas</div><div class="metric-value ${pC}">${p}</div><div class="metric-sub">${p>=15?'Galeria adequada (≥15)':p>=8?'Poucas fotos (<15)':p===0?'Nenhuma foto':'Crítico (<8)'}</div></div>
     <div class="metric-card"><div class="metric-label">Score de saúde</div><div class="metric-value" style="color:${scoreColor(score)}">${score}</div><div class="metric-sub">/100 — ${scoreLabel(score)}</div></div>
   `;
 
@@ -1298,7 +1298,7 @@ function renderDashboard(biz, score) {
     biz.formatted_phone_number?['Telefone cadastrado','green']:['Sem telefone','amber'],
     biz.website?['Website linkado','blue']:['Sem website','amber'],
     biz.opening_hours?['Horários cadastrados','green']:['Sem horários','amber'],
-    p>=20?['Galeria adequada (≥20)','green']:p>=10?['Poucas fotos (<20)','amber']:['Fotos insuficientes','red'],
+    p>=15?['Galeria adequada (≥15)','green']:p>=8?['Poucas fotos (<15)','amber']:['Fotos insuficientes','red'],
     isOpen===true?['Aberto agora','green']:isOpen===false?['Fechado agora','gray']:[],
   ].filter(t=>t.length);
 
@@ -1364,7 +1364,8 @@ function buildOpportunities(biz) {
   if (reviews.length > 0 && replyRate < 0.5) opps.push({ t:`Baixa taxa de resposta a avaliações (${(replyRate*100).toFixed(0)}%)`, d:'Responder a todas as avaliações (positivas e negativas) é obrigatório para saúde do perfil.', p:replyRate===0?'high':'med' });
   if (r > 0 && r < 4) opps.push({ t:`Nota ${r.toFixed(1)} — abaixo da média`, d:'Respostas profissionais e gestão de reviews podem recuperar a nota em 60-90 dias.', p:'high' });
   if (!biz.website) opps.push({ t:'Sem website vinculado', d:'Perda de credibilidade e conversões. Um site simples já resolve.', p:'med' });
-  if (p < 20) opps.push({ t:`Apenas ${p} foto${p!==1?'s':''} — mínimo recomendado é 20`, d:'+20 fotos geram 2x mais visitas ao site segundo dados do Google.', p:p<5?'high':'med' });
+  if (p < 15) opps.push({ t:`Apenas ${p} foto${p!==1?'s':''} — recomendado pelo menos 15`, d:'Perfis com galeria ativa têm mais visitas. Adicione fotos novas a cada 3–6 meses — o Google valoriza perfis com fotos recentes e variadas.', p:p<5?'high':'med' });
+  if (p >= 15) opps.push({ t:'Renove as fotos do perfil regularmente', d:'Mantenha fotos atualizadas (a cada 3–6 meses). Fotos de ambiente, equipe e serviços recentes aumentam o engajamento e a confiança dos clientes.', p:'low' });
   const ai = APP.aiText;
   if (ai?.opportunities) ai.opportunities.forEach(o => opps.push({ t: o, d:'Identificado pela análise de IA com base nas avaliações e perfil.', p:'med' }));
   if (opps.length === 0) opps.push({ t:'Perfil bem estruturado!', d:'Base sólida. Foque em SEO local avançado e gestão recorrente para manter a liderança.', p:'low' });
@@ -1386,19 +1387,20 @@ function renderChecklist(biz, score) {
   if (reviews.length > 0) mostRecentDays = (now - Math.max(...reviews.map(rv=>rv.time))) / 86400;
   const withReply = reviews.filter(rv => rv.owner_reply?.text).length;
   const replyRate = reviews.length > 0 ? withReply / reviews.length : 0;
-  const replyOk = reviews.length > 0 ? replyRate >= 0.8 : false;
-  const replyWarn = reviews.length > 0 ? replyRate > 0 && replyRate < 0.8 : true;
+  // API só retorna 5 avaliações de amostra — não é confiável para medir respostas reais
+  const replyOk = withReply > 0; // green se detectou ao menos 1 resposta na amostra
+  const replyWarn = true; // sempre amarelo (warning) pois a API é inconclusiva
 
   const checks = [
     { l:'Avaliação ≥ 4 estrelas', ok:r>=4, w:r>=3&&r<4, v:r>0?r.toFixed(1)+' ★':'Sem avaliações', tip:'Avaliação média acima de 4 é referência de confiança.' },
     { l:'Volume de avaliações ≥ 100', ok:t>=100, w:t>=50&&t<100, v:t+' avaliações', tip:'Perfis com mais de 100 avaliações têm muito mais credibilidade. Acima de 200 é excelente.' },
     { l:'Avaliação recente (últimos 15 dias)', ok:hasRecent15, w:!hasRecent15&&hasRecent30, v:hasRecent15?`${rev15} avaliação(ões) nos últimos 15 dias`:hasRecent30?`Apenas nos últimos 30 dias`:'Sem avaliações recentes', tip:'15-30 dias é o limite para ser considerado recente. Mais antigo que isso não conta.' },
     { l:'Avaliação nos últimos 30 dias', ok:hasRecent30, w:!hasRecent30&&mostRecentDays<=90, v:hasRecent30?`${rev30} avaliação(ões) nos últimos 30 dias`:mostRecentDays<=90?`Última há ${Math.round(mostRecentDays)} dias`:`Última há mais de ${Math.round(mostRecentDays/30)} meses`, tip:'Sem avaliações em 30 dias o perfil perde relevância no algoritmo do Google.' },
-    { l:'Respostas a avaliações (≥80% da amostra API)', ok:replyOk, w:replyWarn, v:reviews.length>0?`${withReply}/${reviews.length} na amostra (${(replyRate*100).toFixed(0)}%) — API retorna até 5 avaliações`:'Amostra insuficiente — verifique diretamente no Google', tip:'A API retorna apenas uma amostra de até 5 avaliações. O número real de respostas pode ser maior. Verifique manualmente no perfil do Google.' },
+    { l:'Respostas a avaliações', ok:replyOk, w:replyWarn, v:reviews.length>0?`${withReply} detectadas na amostra de ${reviews.length} (API limitada — verifique no Google)`:'Sem amostra — verifique diretamente no Google', tip:'A API do Google retorna apenas 5 avaliações de amostra e nem sempre inclui os dados de resposta do proprietário. Verifique diretamente no Google Meu Negócio.' },
     { l:'Telefone cadastrado', ok:!!biz.formatted_phone_number, v:biz.formatted_phone_number||'Não cadastrado', tip:'Aumenta as chamadas diretas do Google Maps.' },
     { l:'Website linkado', ok:!!biz.website, v:biz.website?'Cadastrado':'Não cadastrado', tip:'Redirecionamentos ao site geram conversões.' },
     { l:'Horários de funcionamento', ok:!!biz.opening_hours, v:biz.opening_hours?'Cadastrado':'Não cadastrado', tip:'Usuários verificam horários antes de visitar.' },
-    { l:'Galeria de fotos ≥ 20', ok:p>=20, w:p>=10&&p<20, v:p+' foto'+(p!==1?'s':''), tip:'Mínimo de 20 fotos. Perfis com +30 fotos têm 2x mais visitas ao site.' },
+    { l:'Galeria de fotos ≥ 15', ok:p>=15, w:p>=8&&p<15, v:p+' foto'+(p!==1?'s':'')+' (via API)', tip:'Mínimo de 15 fotos ativas no perfil. Adicione fotos novas a cada 3–6 meses para manter a galeria atualizada — o Google valoriza perfis com fotos recentes.' },
     { l:'Perfil ativo (não suspenso)', ok:biz.business_status==='OPERATIONAL', v:biz.business_status==='OPERATIONAL'?'Operacional':(biz.business_status||'Desconhecido'), tip:'Perfis suspensos ficam ocultos nos resultados.' },
     { l:'Descrição editorial', ok:!!biz.editorial_summary?.overview, w:!biz.editorial_summary?.overview, v:biz.editorial_summary?.overview?'Disponível':'Não disponível', tip:'Descrição gerada pelo Google aparece em destaque.' },
     { l:'Categoria do negócio', ok:!!(biz.types?.length>0), v:biz.types?biz.types.slice(0,2).join(', ').replace(/_/g,' '):'N/A', tip:'Categorias corretas determinam em quais buscas aparecer.' },
@@ -1501,7 +1503,7 @@ function renderReviews(biz) {
       : `${(mostRecentDaysB/365).toFixed(1)} anos atrás`;
     const recentColor = mostRecentDaysB <= 15 ? 'var(--green)' : mostRecentDaysB <= 30 ? 'var(--amber)' : 'var(--red)';
     const recentIcon  = mostRecentDaysB <= 30 ? '✓' : '✗';
-    const replyColor  = withReplyB / Math.max(reviews.length,1) >= 0.5 ? 'var(--green)' : withReplyB > 0 ? 'var(--amber)' : 'var(--red)';
+    const replyColor  = withReplyB > 0 ? 'var(--green)' : 'var(--text2)';
     recentBannerHtml = `
       <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">
         <div style="flex:1;min-width:180px;background:var(--bg3);border-radius:8px;padding:10px 14px;border-left:3px solid ${recentColor}">
@@ -1511,9 +1513,9 @@ function renderReviews(biz) {
         </div>
         <div style="flex:1;min-width:180px;background:var(--bg3);border-radius:8px;padding:10px 14px;border-left:3px solid ${replyColor}">
           <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:3px">Respostas do proprietário</div>
-          <div style="font-size:15px;font-weight:700;color:${replyColor}">${withReplyB}/${reviews.length} nesta amostra</div>
-          <div style="font-size:11px;color:var(--text2);margin-top:2px">${withReplyB===reviews.length&&reviews.length>0?'Todas respondidas (amostra) — ótimo!':'Responder a todas as avaliações é essencial'}</div>
-          <div style="font-size:10px;color:var(--text3);margin-top:4px;line-height:1.4">⚠ API retorna amostra de até 5 avaliações — pode não refletir as mais recentes ou o total real de respostas.</div>
+          <div style="font-size:15px;font-weight:700;color:${replyColor}">${withReplyB > 0 ? withReplyB+'/'+reviews.length+' detectadas nesta amostra' : 'Não detectadas nesta amostra'}</div>
+          <div style="font-size:11px;color:var(--text2);margin-top:2px">${withReplyB===reviews.length&&reviews.length>0?'Respostas detectadas em todas — ótimo!':'Verifique diretamente no Google Meu Negócio'}</div>
+          <div style="font-size:10px;color:var(--text3);margin-top:4px;line-height:1.4">ℹ A API retorna amostra de até 5 avaliações selecionadas — pode não incluir as mais recentes. Respostas do proprietário nem sempre são retornadas pela API.</div>
         </div>
       </div>
       ${mostRecentDaysB > 30 ? `<div style="background:var(--red-light);color:#791F1F;border-radius:7px;padding:10px 14px;font-size:13px;margin-bottom:14px;display:flex;gap:8px;align-items:flex-start"><strong>⚠ Atenção:</strong> A avaliação mais recente detectada tem ${daysLabel}. Avaliações com mais de 30 dias NÃO são consideradas recentes. Isso penaliza severamente o Score de Saúde.</div>` : ''}
@@ -1531,9 +1533,12 @@ function renderReviews(biz) {
       const hasReply = !!rv.owner_reply?.text;
       const daysAgo = (now2 - rv.time) / 86400;
       const ageColor = daysAgo <= 15 ? 'var(--green)' : daysAgo <= 30 ? 'var(--amber)' : 'var(--text3)';
+      const replyBadge = hasReply
+        ? `<span style="margin-left:8px;font-size:10px;background:var(--green-light);color:var(--green-dark);padding:2px 6px;border-radius:4px;font-weight:700">✓ Respondida</span>`
+        : `<span style="margin-left:8px;font-size:10px;background:#F0EFE9;color:var(--text3);padding:2px 6px;border-radius:4px;font-weight:600" title="A API do Google pode não retornar respostas do proprietário. Verifique diretamente no perfil.">Verificar no Google</span>`;
       return `
       <div class="review-card" style="border-left:3px solid ${ageColor}">
-        <div class="review-stars">${stars(rv.rating)} <span style="font-size:11px;color:${ageColor};margin-left:4px;font-weight:600">${rv.relative_time_description||''}</span>${hasReply?`<span style="margin-left:8px;font-size:10px;background:var(--green-light);color:var(--green-dark);padding:2px 6px;border-radius:4px;font-weight:700">✓ Respondida</span>`:`<span style="margin-left:8px;font-size:10px;background:var(--red-light);color:#791F1F;padding:2px 6px;border-radius:4px;font-weight:700">Sem resposta</span>`}</div>
+        <div class="review-stars">${stars(rv.rating)} <span style="font-size:11px;color:${ageColor};margin-left:4px;font-weight:600">${rv.relative_time_description||''}</span>${replyBadge}</div>
         <div class="review-text">${(rv.text||'Avaliação sem texto.').slice(0,300)}${(rv.text||'').length>300?'...':''}</div>
         ${hasReply?`<div style="margin-top:8px;padding:8px 10px;background:var(--green-light);border-radius:6px;font-size:12px;color:var(--green-dark)"><strong>Resposta do proprietário:</strong> ${(rv.owner_reply.text||'').slice(0,200)}${(rv.owner_reply.text||'').length>200?'...':''}</div>`:''}
         <div class="review-author">${rv.author_name||'Anônimo'}</div>
