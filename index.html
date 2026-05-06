@@ -1768,93 +1768,121 @@ async function generateHeatmap() {
     }
   }));
 
-  // Compute summary stats
-  const numericRanks = resultsGrid.map(r => parseInt(r) || 99);
-  const bestRank = Math.min(...numericRanks);
-  const avgRankVal = numericRanks.reduce((a,b)=>a+b,0) / numericRanks.length;
-  const visibleCount = numericRanks.filter(v => v <= 20).length;
-  const top3Count = numericRanks.filter(v => v <= 3).length;
+  // Compute stats
+  const numericRanks = resultsGrid.map(r => (r === '20+' || r === 'N/A' || r === 'Erro') ? 99 : (parseInt(r) || 99));
+  const nonCenterRanks = numericRanks.filter((_,i) => i !== 4);
+  const bestRank   = Math.min(...nonCenterRanks);
+  const avgRankRaw = nonCenterRanks.reduce((a,b) => a+b,0) / nonCenterRanks.length;
+  const top3Count  = nonCenterRanks.filter(v => v <= 3).length;
+  const top10Count = nonCenterRanks.filter(v => v <= 10).length;
 
-  function heatColor(val, isCenter) {
-    if (isCenter) return { bg:'#185FA5', text:'#fff', label:'Você' };
-    if (val <= 3)  return { bg:'#1D9E75', text:'#fff', label:'Top 3 🏆' };
-    if (val <= 7)  return { bg:'#56B86E', text:'#fff', label:'Boa' };
-    if (val <= 10) return { bg:'#BA7517', text:'#fff', label:'Média' };
-    if (val <= 15) return { bg:'#D45A1A', text:'#fff', label:'Fraca' };
-    if (val <= 20) return { bg:'#C4372A', text:'#fff', label:'Ruim' };
-    return { bg:'#8B1A19', text:'#fff', label:'Invisível' };
+  function heatColor(val) {
+    if (val <= 3)  return { bg:'#1D9E75', border:'#148F66', label:'Top 3', icon:'🏆' };
+    if (val <= 7)  return { bg:'#4CAF7D', border:'#3A9A6A', label:'Boa',   icon:'✅' };
+    if (val <= 10) return { bg:'#E8A020', border:'#C88010', label:'Média',  icon:'⚠️' };
+    if (val <= 15) return { bg:'#D4581A', border:'#B84010', label:'Fraca',  icon:'⬇' };
+    if (val <= 20) return { bg:'#C0392B', border:'#A02020', label:'Ruim',   icon:'✗' };
+    return            { bg:'#922B21', border:'#7B241C', label:'Invisível', icon:'✗' };
   }
 
-  const directions = ['NO','N','NE','O','Centro','L','SO','S','SE'];
+  const dirs = ['NO','Norte','NE','Oeste','','Leste','SO','Sul','SE'];
 
-  let html = `
-  <div class="card-title mb-3"><span class="card-title-dot" style="background:var(--green)"></span>Grid de Posicionamento Local — Busca: "<strong>${keyword}</strong>"</div>
-  <div style="font-size:13px;color:var(--text2);line-height:1.6;margin-bottom:18px">
-    Simula clientes buscando pelo serviço em <strong>9 pontos geográficos</strong> ao redor do negócio (raio ~1km por ponto). O número mostra em qual posição a empresa aparece no Google a partir de cada local.
-  </div>
-
-  <!-- Legend -->
-  <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:18px;align-items:center">
-    <span style="font-size:11px;font-weight:700;color:var(--text2);margin-right:2px">Posição:</span>
-    <span style="background:#1D9E75;color:#fff;font-size:10px;font-weight:700;padding:3px 9px;border-radius:5px">1–3 Excelente</span>
-    <span style="background:#56B86E;color:#fff;font-size:10px;font-weight:700;padding:3px 9px;border-radius:5px">4–7 Boa</span>
-    <span style="background:#BA7517;color:#fff;font-size:10px;font-weight:700;padding:3px 9px;border-radius:5px">8–10 Média</span>
-    <span style="background:#D45A1A;color:#fff;font-size:10px;font-weight:700;padding:3px 9px;border-radius:5px">11–15 Fraca</span>
-    <span style="background:#C4372A;color:#fff;font-size:10px;font-weight:700;padding:3px 9px;border-radius:5px">16–20 Ruim</span>
-    <span style="background:#8B1A19;color:#fff;font-size:10px;font-weight:700;padding:3px 9px;border-radius:5px">20+ Invisível</span>
-  </div>
-
-  <!-- Compass Norte -->
-  <div style="text-align:center;margin-bottom:6px">
-    <span style="font-size:11px;font-weight:700;color:var(--text3);letter-spacing:.5px">▲ NORTE</span>
-  </div>
-
-  <!-- Grid -->
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:480px;margin:0 auto;background:var(--bg3);border-radius:16px;padding:20px;border:1px solid var(--border)">
-  `;
-
+  let gridCells = '';
   resultsGrid.forEach((rank, i) => {
-    const isCenter = i === 4;
-    const val = parseInt(rank) || 99;
-    const { bg, text, label } = heatColor(val, isCenter);
-    const dir = directions[i];
-    const displayRank = isCenter ? '📍' : rank;
-    const displayLabel = isCenter ? biz.name.split(' ').slice(0,2).join(' ') : label;
-    html += `
-      <div style="border-radius:12px;padding:14px 6px 10px;text-align:center;background:${bg};box-shadow:0 3px 10px rgba(0,0,0,0.18);position:relative${isCenter?';border:2px solid #fff;outline:2px solid '+bg:''}">
-        <div style="font-size:9px;font-weight:700;color:${text};opacity:0.75;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px">${dir}</div>
-        <div style="font-size:${isCenter?'22px':'30px'};font-weight:800;color:${text};line-height:1">${displayRank}</div>
-        <div style="font-size:9px;color:${text};opacity:0.85;margin-top:5px;font-weight:600;line-height:1.2">${displayLabel}</div>
-      </div>`;
+    if (i === 4) {
+      // Center cell — business location
+      const bizShort = (biz.name||'').split(' ').slice(0,3).join(' ');
+      gridCells += `
+        <div style="border-radius:14px;padding:16px 8px 12px;text-align:center;background:#185FA5;border:3px solid #fff;box-shadow:0 4px 16px rgba(24,95,165,0.45);display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:110px">
+          <div style="font-size:11px;font-weight:800;color:rgba(255,255,255,0.7);letter-spacing:.6px;text-transform:uppercase;margin-bottom:6px">Você</div>
+          <div style="font-size:26px;line-height:1">📍</div>
+          <div style="font-size:9px;color:rgba(255,255,255,0.85);margin-top:6px;font-weight:700;line-height:1.2;max-width:80px;word-break:break-word">${bizShort}</div>
+        </div>`;
+    } else {
+      const val = numericRanks[i];
+      const { bg, border, label, icon } = heatColor(val);
+      const displayRank = (rank === '20+' || val >= 99) ? '20+' : String(val);
+      gridCells += `
+        <div style="border-radius:14px;padding:14px 8px 10px;text-align:center;background:${bg};border:2px solid ${border};box-shadow:0 3px 12px rgba(0,0,0,0.25);display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:110px">
+          <div style="font-size:9px;font-weight:700;color:rgba(255,255,255,0.7);letter-spacing:.5px;text-transform:uppercase;margin-bottom:4px">${dirs[i]}</div>
+          <div style="font-size:32px;font-weight:900;color:#fff;line-height:1">${displayRank}</div>
+          <div style="font-size:10px;color:rgba(255,255,255,0.9);margin-top:5px;font-weight:700">${label}</div>
+        </div>`;
+    }
   });
 
-  html += `</div>
+  // Stat values
+  const bestDisp   = bestRank >= 99 ? '20+' : bestRank + 'º';
+  const avgDisp    = avgRankRaw >= 99 ? '20+' : Math.round(avgRankRaw) + 'º';
+  const bestCol    = bestRank <= 3 ? '#1D9E75' : bestRank <= 10 ? '#E8A020' : '#C0392B';
+  const avgCol     = avgRankRaw <= 7 ? '#1D9E75' : avgRankRaw <= 15 ? '#E8A020' : '#C0392B';
+  const top3Col    = top3Count > 0 ? '#1D9E75' : '#C0392B';
 
-  <!-- Stats row -->
-  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;max-width:480px;margin:14px auto 0">
-    <div style="background:${top3Count>0?'var(--green-light)':'var(--bg3)'};border-radius:10px;padding:12px;text-align:center;border:1px solid var(--border)">
-      <div style="font-size:22px;font-weight:800;color:${top3Count>0?'var(--green)':'var(--text2)'}">${top3Count}</div>
-      <div style="font-size:10px;font-weight:700;color:var(--text2);margin-top:3px">Pontos Top 3</div>
+  let diagBg, diagCol, diagIcon, diagTitle, diagText;
+  if (top3Count >= 5) {
+    diagBg='#E1F5EE'; diagCol='#0F6E56'; diagIcon='✅';
+    diagTitle='Excelente visibilidade local!';
+    diagText='O negócio aparece no Top 3 em '+top3Count+'/8 pontos ao redor — presença local muito forte. Continue gerando avaliações e postando atualizações semanais.';
+  } else if (top3Count >= 2) {
+    diagBg='#FAEEDA'; diagCol='#7A4B00'; diagIcon='⚠️';
+    diagTitle='Visibilidade parcial — pode melhorar';
+    diagText='Visível no Top 3 em apenas '+top3Count+'/8 pontos. Fotos recentes, avaliações consistentes e respostas rápidas ampliam o raio verde.';
+  } else if (top10Count >= 3) {
+    diagBg='#FFF3E0'; diagCol='#7A4B00'; diagIcon='⬇';
+    diagTitle='Baixa visibilidade — ação necessária';
+    diagText='O negócio aparece em posição média no raio de busca (fora do Top 3). Estratégia de avaliações e Google Posts ajudam a subir o ranking.';
+  } else {
+    diagBg='#FCEBEB'; diagCol='#791F1F'; diagIcon='🔴';
+    diagTitle='Visibilidade crítica — negócio quase invisível';
+    diagText='A empresa não aparece no Top 20 para a maioria dos clientes no raio de 1km. Check-ins, postagens semanais, avaliações recentes e respostas são urgentes.';
+  }
+
+  let html = `
+  <div class="card" style="margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:18px">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:3px">Grid de Posicionamento Local</div>
+        <div style="font-size:12px;color:var(--text2)">Busca simulada: <strong style="color:var(--green)">${keyword}</strong> — raio de ~1km por ponto</div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span style="background:var(--green);color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px">1–3 Excelente</span>
+        <span style="background:#4CAF7D;color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px">4–7 Boa</span>
+        <span style="background:#E8A020;color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px">8–10 Média</span>
+        <span style="background:#D4581A;color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px">11–15 Fraca</span>
+        <span style="background:#922B21;color:#fff;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px">20+ Invisível</span>
+      </div>
     </div>
-    <div style="background:${bestRank<=10?'var(--green-light)':'var(--red-light)'};border-radius:10px;padding:12px;text-align:center;border:1px solid var(--border)">
-      <div style="font-size:22px;font-weight:800;color:${bestRank<=3?'var(--green)':bestRank<=10?'var(--amber)':'var(--red)'}">${bestRank>=99?'20+':bestRank}º</div>
-      <div style="font-size:10px;font-weight:700;color:var(--text2);margin-top:3px">Melhor posição</div>
+
+    <div style="text-align:center;font-size:11px;font-weight:700;color:var(--text3);letter-spacing:1px;margin-bottom:8px">▲ NORTE</div>
+
+    <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;background:#E8E6DE;border-radius:18px;padding:16px;border:1px solid var(--border)">
+      ${gridCells}
     </div>
-    <div style="background:var(--bg3);border-radius:10px;padding:12px;text-align:center;border:1px solid var(--border)">
-      <div style="font-size:22px;font-weight:800;color:${avgRankVal<=7?'var(--green)':avgRankVal<=15?'var(--amber)':'var(--red)'}">${avgRankVal>=99?'20+':avgRankVal.toFixed(0)}º</div>
-      <div style="font-size:10px;font-weight:700;color:var(--text2);margin-top:3px">Posição média</div>
+
+    <div style="text-align:center;font-size:11px;font-weight:700;color:var(--text3);letter-spacing:1px;margin-top:8px">▼ SUL</div>
+  </div>
+
+  <div class="grid-3" style="margin-bottom:16px">
+    <div class="card" style="text-align:center">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:8px">Pontos no Top 3</div>
+      <div style="font-size:36px;font-weight:900;color:${top3Col};line-height:1">${top3Count}<span style="font-size:16px;color:var(--text3)">/8</span></div>
+      <div style="font-size:11px;color:var(--text2);margin-top:4px">${top3Count===0?'Nenhum ponto visível':top3Count===8?'Todos os pontos!':'pontos com ótima visibilidade'}</div>
+    </div>
+    <div class="card" style="text-align:center">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:8px">Melhor posição</div>
+      <div style="font-size:36px;font-weight:900;color:${bestCol};line-height:1">${bestDisp}</div>
+      <div style="font-size:11px;color:var(--text2);margin-top:4px">${bestRank<=3?'No Local Pack do Google':bestRank<=10?'Aparece mas não lidera':'Fora do Top 20'}</div>
+    </div>
+    <div class="card" style="text-align:center">
+      <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:8px">Posição média</div>
+      <div style="font-size:36px;font-weight:900;color:${avgCol};line-height:1">${avgDisp}</div>
+      <div style="font-size:11px;color:var(--text2);margin-top:4px">nos arredores (excl. centro)</div>
     </div>
   </div>
 
-  <!-- Diagnosis -->
-  <div style="max-width:480px;margin:14px auto 0;padding:14px 16px;border-radius:10px;font-size:13px;line-height:1.5;${top3Count>=5?'background:var(--green-light);color:var(--green-dark)':top3Count>=2?'background:var(--amber-light);color:#5A3800':'background:var(--red-light);color:#791F1F'}">
-    <strong>${top3Count>=5?'✅ Boa visibilidade local!':top3Count>=2?'⚠ Visibilidade parcial':'🔴 Visibilidade crítica'}</strong><br>
-    ${top3Count>=5
-      ? `O negócio aparece no Top 3 em ${top3Count}/9 pontos da cidade — excelente presença local. Continue gerando avaliações e respondendo-as.`
-      : top3Count>=2
-      ? `Visível no Top 3 em ${top3Count}/9 pontos. Há espaço para crescer. Fotos recentes, avaliações consistentes e respostas rápidas ampliam o raio verde.`
-      : `O negócio está invisível para a maioria dos clientes no raio de busca. Estratégias de Check-ins, postagens semanais, mais avaliações e resposta rápida são essenciais para expandir a visibilidade.`
-    }
+  <div style="background:${diagBg};color:${diagCol};border-radius:12px;padding:16px 20px;font-size:13px;line-height:1.6;border-left:4px solid ${diagCol}">
+    <div style="font-weight:800;font-size:14px;margin-bottom:6px">${diagIcon} ${diagTitle}</div>
+    <div>${diagText}</div>
   </div>
   `;
   el.innerHTML = html;
