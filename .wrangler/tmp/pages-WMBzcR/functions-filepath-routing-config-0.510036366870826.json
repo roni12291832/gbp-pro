@@ -1,0 +1,37 @@
+{
+  "routes": [
+    {
+      "routePath": "/api/ai",
+      "mountPath": "/api",
+      "method": "",
+      "module": [
+        "api/ai.js:onRequest"
+      ]
+    },
+    {
+      "routePath": "/api/places",
+      "mountPath": "/api",
+      "method": "",
+      "module": [
+        "api/places.js:onRequest"
+      ]
+    },
+    {
+      "routePath": "/claude",
+      "mountPath": "/",
+      "method": "",
+      "module": [
+        "claude.js:onRequest"
+      ]
+    },
+    {
+      "routePath": "/places",
+      "mountPath": "/",
+      "method": "",
+      "module": [
+        "places.js:onRequest"
+      ]
+    }
+  ],
+  "baseURL": "/"
+}
