@@ -692,6 +692,8 @@ const CATEGORY_MAP = {
       churrascaria: { name: 'Churrascaria', keyword: 'churrascaria', primary: ['steakhouse','restaurant'], reject: ['lodging'] },
       acai: { name: 'Açaí / Sorveteria', keyword: 'açai sorveteria', primary: ['acai_shop','ice_cream_shop','food','restaurant'], secondary: ['store'], reject: ['lodging','clothing_store','car_repair'] },
       cafe: { name: 'Café / Padaria', keyword: 'café padaria', primary: ['cafe','bakery','food'], reject: ['lodging'] },
+      doceria: { name: 'Doceria / Confeitaria', keyword: 'doceria confeitaria', primary: ['bakery','food','restaurant'], reject: ['lodging'] },
+      marmitaria: { name: 'Marmitaria / Delivery', keyword: 'marmitaria', primary: ['meal_takeaway','meal_delivery','restaurant'], reject: ['lodging'] },
       restaurante: { name: 'Restaurante Geral', keyword: 'restaurante', primary: ['restaurant','food'], reject: ['lodging'] }
     }
   },
@@ -702,6 +704,7 @@ const CATEGORY_MAP = {
       pneus: { name: 'Loja de Pneus / Borracharia', keyword: 'pneus', primary: ['car_repair','store'], reject: ['lodging','food'] },
       lavajato: { name: 'Lava-Jato / Estética Automotiva', keyword: 'lava jato', primary: ['car_wash','car_repair'], reject: ['lodging','food'] },
       concessionaria: { name: 'Concessionária / Revenda', keyword: 'veículos', primary: ['car_dealer'], reject: ['lodging','food'] },
+      autopecas: { name: 'Auto Peças / Acessórios', keyword: 'auto peças', primary: ['car_repair','store'], reject: ['lodging','food'] },
       implementos: { name: 'Implementos Rodoviários / Peças', keyword: 'implementos rodoviários peças', primary: ['car_repair','store','point_of_interest'], reject: ['lodging','food','restaurant'] }
     }
   },
@@ -711,16 +714,19 @@ const CATEGORY_MAP = {
       clinica: { name: 'Clínica Médica / Consultório', keyword: 'clinica', primary: ['doctor','clinic','health'], reject: ['food'] },
       dentista: { name: 'Dentista / Odontologia', keyword: 'dentista', primary: ['dentist','dental_clinic','health'], reject: ['food'] },
       farmacia: { name: 'Farmácia / Drogaria', keyword: 'farmácia', primary: ['pharmacy','drugstore','store'], reject: ['food'] },
-      psicologia: { name: 'Psicologia / Terapia', keyword: 'psicologo', primary: ['doctor','health'], reject: ['food'] }
+      psicologia: { name: 'Psicologia / Terapia', keyword: 'psicologo', primary: ['doctor','health'], reject: ['food'] },
+      fisioterapia: { name: 'Fisioterapia / Pilates', keyword: 'fisioterapia pilates', primary: ['physiotherapist','health','doctor'], reject: ['food'] },
+      laboratorio: { name: 'Laboratório / Exames', keyword: 'laboratorio', primary: ['health','doctor'], reject: ['food'] }
     }
   },
   beleza: {
-    name: 'Beleza', primary: ['beauty_salon','hair_care','spa'], secondary: ['store'], reject: ['restaurant','food','lodging'], radius: 3000, top: 10,
+    name: 'Beleza / Estética', primary: ['beauty_salon','hair_care','spa'], secondary: ['store'], reject: ['restaurant','food','lodging'], radius: 3000, top: 10,
     subs: {
       salao: { name: 'Salão de Beleza', keyword: 'salão de beleza', primary: ['beauty_salon','hair_salon'], reject: ['food'] },
       barbearia: { name: 'Barbearia', keyword: 'barbearia', primary: ['barber_shop','beauty_salon'], reject: ['food'] },
       estetica: { name: 'Clínica de Estética / Spa', keyword: 'estetica', primary: ['spa','health_spa','beauty_salon'], reject: ['food'] },
-      manicure: { name: 'Manicure / Unhas', keyword: 'unhas', primary: ['nail_salon','beauty_salon'], reject: ['food'] }
+      manicure: { name: 'Manicure / Unhas', keyword: 'unhas', primary: ['nail_salon','beauty_salon'], reject: ['food'] },
+      depilacao: { name: 'Depilação', keyword: 'depilacao', primary: ['beauty_salon','spa'], reject: ['food'] }
     }
   },
   varejo: {
@@ -737,7 +743,9 @@ const CATEGORY_MAP = {
     subs: {
       advogado: { name: 'Escritório de Advocacia', keyword: 'advogado', primary: ['lawyer'], reject: ['food'] },
       contabilidade: { name: 'Escritório de Contabilidade', keyword: 'contabilidade', primary: ['accounting'], reject: ['food'] },
-      seguros: { name: 'Corretora de Seguros', keyword: 'seguros', primary: ['insurance_agency'], reject: ['food'] }
+      seguros: { name: 'Corretora de Seguros', keyword: 'seguros', primary: ['insurance_agency'], reject: ['food'] },
+      assistencia: { name: 'Assistência Técnica / Celular', keyword: 'assistencia tecnica', primary: ['electronics_store','store'], reject: ['food'] },
+      marketing: { name: 'Agência de Marketing', keyword: 'agencia marketing', primary: ['point_of_interest','establishment'], reject: ['food','store'] }
     }
   },
   educacao: { name: 'Educação', primary: ['school','university','primary_school','secondary_school'], secondary: ['library'], reject: ['restaurant','store','lodging'], radius: 4000, top: 10 },
@@ -946,6 +954,10 @@ async function doSearch() {
     biz.lat = detailData.result.geometry?.location?.lat;
     biz.lng = detailData.result.geometry?.location?.lng;
 
+    if (biz.reviews) {
+      biz.reviews.sort((a, b) => b.time - a.time);
+    }
+
     updateStep(steps, 2);
 
     // Detectar segmento: usar seleção do usuário ou auto-detectar pelos tipos do Google
@@ -1124,44 +1136,36 @@ function calcScore(biz) {
   if (rev15 >= 4) s += 25;
   else if (rev15 >= 1) s += 15;
   
-  if (mostRecentDays > 180) s -= 28;
-  else if (mostRecentDays > 50) s -= 10;
+  if (mostRecentDays > 180) s -= 15;
+  else if (mostRecentDays > 50) s -= 5;
 
-  // 2. NOTA DO GOOGLE (Máx: 20)
-  if (r >= 4.8) s += 20;
-  else if (r >= 4.5) s += 14;
-  else if (r >= 4.0) s += 2;
-  else if (r > 0) s -= 5;
+  // 2. NOTA DO GOOGLE (Máx: 25)
+  if (r >= 4.8) s += 25;
+  else if (r >= 4.5) s += 20;
+  else if (r >= 4.0) s += 10;
+  else if (r > 0) s -= 3;
 
   // 3. COMPLETUDE DO PERFIL (Máx: 18)
   if (biz.formatted_phone_number)       s += 6;
   if (biz.website)                       s += 6;
   if (biz.opening_hours?.weekday_text)   s += 6;
 
-  // 4. VOLUME TOTAL DE AVALIAÇÕES (Máx: 17)
-  if (t > 500) s += 17;
-  else if (t > 150) s += 8;
-  else if (t >= 100) s += 4;
-  else if (t > 0 && t <= 99) s -= 10;
+  // 4. VOLUME TOTAL DE AVALIAÇÕES (Máx: 20)
+  if (t >= 500) s += 20;
+  else if (t >= 150) s += 12;
+  else if (t >= 100) s += 6;
+  else if (t > 0 && t < 100) s -= 5;
 
-  // 5. RESPOSTAS DO PROPRIETÁRIO (Máx: 12)
-  const withReply = reviews.filter(rv => rv.owner_reply?.text).length;
-  const replyRate = reviews.length > 0 ? withReply / reviews.length : 0;
-  if (reviews.length > 0) {
-    if (replyRate >= 0.8) s += 12;
-    else if (replyRate < 0.2) s -= 8;
-  }
-
-  // 6. VOLUME DE FOTOS (Máx: 10)
-  if (p > 15) s += 10;
-  else if (p >= 10) s += 4;
-  else if (p > 0 && p < 10) s -= 7;
+  // 5. FOTOS (Máx: 12)
+  if (p >= 15) s += 12;
+  else if (p >= 10) s += 6;
+  else if (p > 0 && p < 10) s -= 3;
 
   // PENALIDADES CRÍTICAS
   if (biz.business_status && biz.business_status !== 'OPERATIONAL') s -= 50;
   if (t === 0) s -= 30;
 
-  return Math.max(0, Math.min(100, Math.round(s)));
+  return Math.max(49, Math.min(100, Math.round(s)));
 }
 
 function scoreColor(s) { return s >= 80 ? '#1D9E75' : s >= 60 ? '#BA7517' : '#E24B4A'; }
@@ -1284,8 +1288,7 @@ function buildOpportunities(biz) {
   else if (t < 150) opps.push({ t:`${t} avaliações — abaixo do mínimo recomendado (150)`, d:'Negócios com menos de 150 avaliações perdem visibilidade para concorrentes.', p:'high' });
   if (rev30 === 0 && mostRecentDays <= 180) opps.push({ t:'Sem avaliações nos últimos 30 dias', d:'O perfil precisa receber avaliações regularmente. Último registro há mais de 30 dias.', p:'high' });
   if (rev30 === 0 && mostRecentDays > 180)  opps.push({ t:`Avaliações desatualizadas — mais de ${Math.round(mostRecentDays/30)} meses sem novidades`, d:'Avaliações antigas penalizam o ranking. Implante uma estratégia recorrente de coleta.', p:'high' });
-  if (reviews.length > 0 && replyRate < 0.5) opps.push({ t:`Baixa taxa de resposta a avaliações (${(replyRate*100).toFixed(0)}%)`, d:'Responder a todas as avaliações (positivas e negativas) é obrigatório para saúde do perfil.', p:replyRate===0?'high':'med' });
-  if (r > 0 && r < 4) opps.push({ t:`Nota ${r.toFixed(1)} — abaixo da média`, d:'Respostas profissionais e gestão de reviews podem recuperar a nota em 60-90 dias.', p:'high' });
+  if (r > 0 && r < 4.5) opps.push({ t:`Nota ${r.toFixed(1)} — precisa melhorar`, d:'Melhorar a gestão de avaliações para elevar a nota acima de 4.5 e atrair mais clientes.', p:'high' });
   if (!biz.website) opps.push({ t:'Sem website vinculado', d:'Perda de credibilidade e conversões. Um site simples já resolve.', p:'med' });
   if (p < 20) opps.push({ t:`Apenas ${p} foto${p!==1?'s':''} — mínimo recomendado é 20`, d:'+20 fotos geram 2x mais visitas ao site segundo dados do Google.', p:p<5?'high':'med' });
   const ai = APP.aiText;
@@ -1307,17 +1310,12 @@ function renderChecklist(biz, score) {
   const hasRecent30 = rev30 > 0;
   let mostRecentDays = Infinity;
   if (reviews.length > 0) mostRecentDays = (now - Math.max(...reviews.map(rv=>rv.time))) / 86400;
-  const withReply = reviews.filter(rv => rv.owner_reply?.text).length;
-  const replyRate = reviews.length > 0 ? withReply / reviews.length : 0;
-  const replyOk = reviews.length > 0 ? replyRate >= 0.8 : false;
-  const replyWarn = reviews.length > 0 ? replyRate > 0 && replyRate < 0.8 : true;
 
   const checks = [
     { l:'Avaliação ≥ 4 estrelas', ok:r>=4, w:r>=3&&r<4, v:r>0?r.toFixed(1)+' ★':'Sem avaliações', tip:'Avaliação média acima de 4 é referência de confiança.' },
     { l:'Volume de avaliações ≥ 150', ok:t>=150, w:t>=80&&t<150, v:t+' avaliações', tip:'Menos de 150 avaliações é muito ruim. Concorrentes com mais avaliações aparecem antes.' },
     { l:'Avaliação recente (últimos 15 dias)', ok:hasRecent15, w:!hasRecent15&&hasRecent30, v:hasRecent15?`${rev15} avaliação(ões) nos últimos 15 dias`:hasRecent30?`Apenas nos últimos 30 dias`:'Sem avaliações recentes', tip:'15-30 dias é o limite para ser considerado recente. Mais antigo que isso não conta.' },
     { l:'Avaliação nos últimos 30 dias', ok:hasRecent30, w:!hasRecent30&&mostRecentDays<=90, v:hasRecent30?`${rev30} avaliação(ões) nos últimos 30 dias`:mostRecentDays<=90?`Última há ${Math.round(mostRecentDays)} dias`:`Última há mais de ${Math.round(mostRecentDays/30)} meses`, tip:'Sem avaliações em 30 dias o perfil perde relevância no algoritmo do Google.' },
-    { l:'Respostas a avaliações (≥80%)', ok:replyOk, w:replyWarn, v:reviews.length>0?`${withReply}/${reviews.length} respondidas (${(replyRate*100).toFixed(0)}%)`:'Requer verificação manual', tip:'Responder a TODAS as avaliações é obrigatório. O Google penaliza perfis que ignoram avaliações.' },
     { l:'Telefone cadastrado', ok:!!biz.formatted_phone_number, v:biz.formatted_phone_number||'Não cadastrado', tip:'Aumenta as chamadas diretas do Google Maps.' },
     { l:'Website linkado', ok:!!biz.website, v:biz.website?'Cadastrado':'Não cadastrado', tip:'Redirecionamentos ao site geram conversões.' },
     { l:'Horários de funcionamento', ok:!!biz.opening_hours, v:biz.opening_hours?'Cadastrado':'Não cadastrado', tip:'Usuários verificam horários antes de visitar.' },
@@ -1404,8 +1402,8 @@ function renderReviews(biz) {
   document.getElementById('rv_keywords').innerHTML = `
     <div class="card-title mb-2"><span class="card-title-dot" style="background:var(--purple)"></span>Palavras-chave identificadas nas avaliações</div>
     ${posKws.length?`<div style="margin-bottom:10px"><div style="font-size:11px;font-weight:700;color:var(--green);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Mencionadas positivamente</div><div class="kw-cloud">${posKws.map(k=>`<span class="kw-tag kw-positive">${k}</span>`).join('')}</div></div>`:``}
-    ${negKws.length?`<div><div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Mencionadas negativamente</div><div class="kw-cloud">${negKws.map(k=>`<span class="kw-tag kw-negative">${k}</span>`).join('')}</div></div>`:'<div style="font-size:13px;color:var(--text2)">Nenhuma palavra-chave negativa detectada.</div>'}
-    ${!ai?`<div style="margin-top:10px;font-size:11px;color:var(--text3)">💡 Conecte a Claude API para análise de sentimento mais precisa</div>`:``}
+    ${negKws.length?`<div><div style="font-size:11px;font-weight:700;color:var(--red);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Mencionadas negativamente</div><div class="kw-cloud">${negKws.map(k=>`<span class="kw-tag kw-negative">${k}</span>`).join('')}</div></div>`:`<div style="font-size:13px;color:var(--green);font-weight:600;padding:6px 0">✓ Nenhum comentário negativo identificado — ótima reputação!</div>`}
+    ${!ai&&reviews.length?`<div style="margin-top:10px;font-size:11px;color:var(--text3)">💡 Ative a IA para aprofundar a análise de sentimento destas avaliações</div>`:``}
   `;
 
   // Recency banner
@@ -1424,18 +1422,12 @@ function renderReviews(biz) {
       : `${(mostRecentDaysB/365).toFixed(1)} anos atrás`;
     const recentColor = mostRecentDaysB <= 15 ? 'var(--green)' : mostRecentDaysB <= 30 ? 'var(--amber)' : 'var(--red)';
     const recentIcon  = mostRecentDaysB <= 30 ? '✓' : '✗';
-    const replyColor  = withReplyB / Math.max(reviews.length,1) >= 0.5 ? 'var(--green)' : withReplyB > 0 ? 'var(--amber)' : 'var(--red)';
     recentBannerHtml = `
       <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:14px">
         <div style="flex:1;min-width:180px;background:var(--bg3);border-radius:8px;padding:10px 14px;border-left:3px solid ${recentColor}">
           <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:3px">Última avaliação (amostra API)</div>
           <div style="font-size:15px;font-weight:700;color:${recentColor}">${recentIcon} ${daysLabel}</div>
           <div style="font-size:11px;color:var(--text2);margin-top:2px">${rev15b} nos últimos 15 dias · ${rev30b} nos últimos 30 dias</div>
-        </div>
-        <div style="flex:1;min-width:180px;background:var(--bg3);border-radius:8px;padding:10px 14px;border-left:3px solid ${replyColor}">
-          <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text2);margin-bottom:3px">Respostas do proprietário</div>
-          <div style="font-size:15px;font-weight:700;color:${replyColor}">${withReplyB}/${reviews.length} respondidas</div>
-          <div style="font-size:11px;color:var(--text2);margin-top:2px">${withReplyB===0?'Nenhuma resposta detectada — penaliza o score':withReplyB===reviews.length?'Todas respondidas — ótimo!':'Responder a todas é obrigatório'}</div>
         </div>
       </div>
       ${mostRecentDaysB > 30 ? `<div style="background:var(--red-light);color:#791F1F;border-radius:7px;padding:10px 14px;font-size:13px;margin-bottom:14px;display:flex;gap:8px;align-items:flex-start"><strong>⚠ Atenção:</strong> A avaliação mais recente detectada tem ${daysLabel}. Avaliações com mais de 30 dias NÃO são consideradas recentes. Isso penaliza severamente o Score de Saúde.</div>` : ''}
