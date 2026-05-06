@@ -262,6 +262,11 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
 .sidebar-overlay.show { opacity: 1; pointer-events: all; }
 .sidebar-close-btn { display: none; }
 .bottom-nav { display: none; }
+.mqn-btn { background: var(--bg3); color: var(--text); border: 1px solid var(--border); border-radius: 22px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; transition: background .15s; white-space: nowrap; }
+.mqn-btn:active { background: var(--bg2); }
+.mqn-btn-accent { background: var(--green); color: #fff; border-color: var(--green); }
+#mobileQuickNav { display: none; }
+@media (min-width: 769px) { #mobileQuickNav { display: none !important; } }
 
 /* ===== RESPONSIVE: TABLET ===== */
 @media (max-width: 900px) {
@@ -577,6 +582,20 @@ input, select, textarea { font-family: inherit; font-size: 14px; }
           </div>
         </div>
 
+        <!-- Mobile quick-nav (shown after analysis, mobile only) -->
+        <div id="mobileQuickNav" style="display:none;margin-bottom:14px">
+          <div style="font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px">Ir para seção</div>
+          <div style="display:flex;flex-wrap:wrap;gap:8px">
+            <button onclick="goPage('dashboard')" class="mqn-btn">📊 Dashboard</button>
+            <button onclick="goPage('checklist')" class="mqn-btn">✅ Checklist</button>
+            <button onclick="goPage('reviews')"   class="mqn-btn">⭐ Reputação</button>
+            <button onclick="goPage('competitors')" class="mqn-btn">🏆 Concorrentes</button>
+            <button onclick="goPage('heatmap')"   class="mqn-btn">🗺️ Mapa de Calor</button>
+            <button onclick="goPage('proposal')"  class="mqn-btn">📄 Proposta</button>
+            <button onclick="generatePDF()"       class="mqn-btn mqn-btn-accent">⬇ Baixar PDF</button>
+          </div>
+        </div>
+
         <!-- Feature list -->
         <div class="grid-3" style="gap:10px">
           <div class="card" style="padding:14px">
@@ -812,6 +831,7 @@ let APP = {
   competitors: [],
   segment: null,
   aiText: '',
+  heatmapResults: null,
   history: JSON.parse(localStorage.getItem('gbp_history') || '[]'),
   clients: JSON.parse(localStorage.getItem('gbp_clients') || '[]'),
   cfg: JSON.parse(localStorage.getItem('gbp_cfg') || '{}')
@@ -1296,6 +1316,7 @@ async function doSearch() {
     document.getElementById('searchBtn').disabled = false;
     document.getElementById('topbarBizName').textContent = biz.name;
     document.getElementById('pdfBtn').style.display = 'flex';
+    document.getElementById('mobileQuickNav').style.display = 'block';
     goPage('dashboard');
 
   } catch(err) {
@@ -2096,6 +2117,9 @@ async function generateHeatmap() {
   </div>
   `;
   el.innerHTML = html;
+
+  // Store results for PDF export
+  APP.heatmapResults = { keyword, grid: resultsGrid, top3Count, top10Count, bestRank, avgRankRaw };
 }
 
 /* ===========================
@@ -2385,161 +2409,410 @@ function generatePDF() {
   const score = calcScore(biz);
   const { jsPDF } = window.jspdf;
   const doc = new jsPDF({ orientation:'portrait', unit:'mm', format:'a4' });
-  const W=210,M=20,CW=W-M*2;
+  const W=210, M=18, CW=W-M*2;
   let y=20;
-  const addPage=()=>{doc.addPage();y=20;};
-  const ck=(n=20)=>{if(y+n>272)addPage();};
 
-  // Cover
-  doc.setFillColor(17,17,17); doc.rect(0,0,W,297,'F');
-  doc.setFillColor(29,158,117); doc.circle(W/2, 100, 55,'F');
-  doc.setTextColor(255,255,255);
-  doc.setFontSize(28); doc.setFont('helvetica','bold');
-  const nameLines = doc.splitTextToSize(biz.name, 160);
-  nameLines.forEach((l,i) => doc.text(l,W/2,170+i*10,{align:'center'}));
-  doc.setFontSize(13); doc.setFont('helvetica','normal'); doc.setTextColor(200,200,200);
-  doc.text('Relatório de Diagnóstico Google Business Profile',W/2,170+nameLines.length*10+10,{align:'center'});
-  doc.setFontSize(10); doc.setTextColor(120,120,120);
-  doc.text('GBP Pro · '+new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'}),W/2,255,{align:'center'});
+  // Safe string — strip all non-Latin1 chars jsPDF Helvetica can't render
+  const s = str => (str||'')
+    .replace(/[★☆]/g,'*')
+    .replace(/✓/g,'+')
+    .replace(/[✗✘]/g,'x')
+    .replace(/≥/g,'>=')
+    .replace(/≤/g,'<=')
+    .replace(/→/g,'->')
+    .replace(/[^\x00-\xFF]/g,'');
 
-  // Score on cover
-  const sC = scoreColor(score);
-  doc.setFillColor(...sC.replace('#','').match(/.{2}/g).map(h=>parseInt(h,16)));
-  doc.circle(W/2,100,40,'F');
-  doc.setTextColor(255,255,255); doc.setFontSize(32); doc.setFont('helvetica','bold');
-  doc.text(String(score),W/2,106,{align:'center'});
-  doc.setFontSize(10); doc.setFont('helvetica','normal');
-  doc.text('/100',W/2,115,{align:'center'});
-  doc.text(scoreLabel(score),W/2,123,{align:'center'});
+  const addPage = () => { doc.addPage(); y=20; };
+  const ck = (n=20) => { if (y+n>275) addPage(); };
 
-  addPage();
-  doc.setTextColor(0,0,0);
+  // --- Section header bar ---
+  const sec = (title, rgb=[29,158,117]) => {
+    ck(16);
+    doc.setFillColor(...rgb); doc.rect(0,y-5,W,13,'F');
+    doc.setTextColor(255,255,255); doc.setFontSize(9); doc.setFont('helvetica','bold');
+    doc.text(title.toUpperCase(), M, y+3);
+    doc.setTextColor(0,0,0);
+    y+=14;
+  };
 
-  // Business info
-  doc.setFillColor(29,158,117); doc.rect(0,0,W,14,'F');
-  doc.setTextColor(255,255,255); doc.setFontSize(10); doc.setFont('helvetica','bold');
-  doc.text('INFORMAÇÕES DO NEGÓCIO', M, 9);
-
-  y = 22;
-  doc.setTextColor(0,0,0);
-  doc.setFontSize(16); doc.setFont('helvetica','bold');
-  doc.text(biz.name, M, y); y+=8;
-  doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.setTextColor(100,100,100);
-  doc.text((biz.types||[]).slice(0,3).join(' · ').replace(/_/g,' '), M, y); y+=6;
-  doc.text(biz.formatted_address||'', M, y); y+=10;
-
-  // Metric boxes
-  const mData = [
-    { l:'Avaliação',v:biz.rating?biz.rating.toFixed(1)+' ★':'N/A',c:(biz.rating||0)>=4?[29,158,117]:[226,75,74] },
-    { l:'Avaliações',v:(biz.user_ratings_total||0).toLocaleString('pt-BR'),c:[186,117,23] },
-    { l:'Fotos',v:String(biz.photos?.length||0),c:(biz.photos?.length||0)>=10?[29,158,117]:[186,117,23] },
-    { l:'Score',v:score+'/100',c:scoreColor(score).replace('#','').match(/.{2}/g).map(h=>parseInt(h,16)) }
-  ];
-  const cs = CW/4;
-  mData.forEach((m,i) => {
-    const x = M+i*cs;
-    doc.setFillColor(245,245,243); doc.roundedRect(x,y,cs-3,18,2,2,'F');
+  // --- Metric box ---
+  const metBox = (x,yy,w,label,val,rgb=[29,158,117]) => {
+    doc.setFillColor(245,245,243); doc.roundedRect(x,yy,w,20,2,2,'F');
+    doc.setDrawColor(...rgb); doc.setLineWidth(0.4); doc.roundedRect(x,yy,w,20,2,2,'S');
     doc.setFontSize(7); doc.setFont('helvetica','normal'); doc.setTextColor(120,120,120);
-    doc.text(m.l, x+(cs-3)/2, y+6, {align:'center'});
-    doc.setFontSize(13); doc.setFont('helvetica','bold'); doc.setTextColor(...(Array.isArray(m.c)?m.c:m.c.replace('#','').match(/.{2}/g).map(h=>parseInt(h,16))));
-    doc.text(m.v, x+(cs-3)/2, y+14, {align:'center'});
-  }); y+=24;
+    doc.text(s(label), x+w/2, yy+7, {align:'center'});
+    doc.setFontSize(12); doc.setFont('helvetica','bold'); doc.setTextColor(...rgb);
+    doc.text(s(val), x+w/2, yy+15, {align:'center'});
+  };
 
-  // Checklist
-  doc.setFontSize(12); doc.setFont('helvetica','bold'); doc.setTextColor(0,0,0);
-  doc.text('Checklist de Otimização', M, y); y+=7;
-  doc.setDrawColor(29,158,117); doc.setLineWidth(0.5); doc.line(M,y,M+CW,y); y+=5;
+  /* ===================== COVER ===================== */
+  doc.setFillColor(14,14,14); doc.rect(0,0,W,297,'F');
+  // green band
+  doc.setFillColor(29,158,117); doc.rect(0,110,W,60,'F');
+  // score circle
+  const sRgb = scoreColor(score).replace('#','').match(/.{2}/g).map(h=>parseInt(h,16));
+  doc.setFillColor(14,14,14); doc.circle(W/2,140,28,'F');
+  doc.setFillColor(...sRgb); doc.circle(W/2,140,24,'F');
+  doc.setTextColor(255,255,255); doc.setFontSize(28); doc.setFont('helvetica','bold');
+  doc.text(String(score), W/2, 146, {align:'center'});
+  doc.setFontSize(8); doc.setFont('helvetica','normal');
+  doc.text('/100  '+s(scoreLabel(score)), W/2, 156, {align:'center'});
+  // name
+  doc.setFontSize(22); doc.setFont('helvetica','bold'); doc.setTextColor(255,255,255);
+  const nameLines = doc.splitTextToSize(s(biz.name), 170);
+  nameLines.forEach((l,i) => doc.text(l, W/2, 185+i*11, {align:'center'}));
+  doc.setFontSize(11); doc.setFont('helvetica','normal'); doc.setTextColor(200,200,200);
+  doc.text('Relatorio de Diagnostico Google Business Profile', W/2, 200+nameLines.length*11, {align:'center'});
+  doc.setFontSize(9); doc.setTextColor(140,140,140);
+  const dt = new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'});
+  doc.text('GBP Pro  |  '+dt, W/2, 270, {align:'center'});
 
+  /* ===================== PAGE 2 — INFO + DASHBOARD ===================== */
+  addPage();
+  sec('Informacoes do Negocio');
+  doc.setFontSize(16); doc.setFont('helvetica','bold'); doc.setTextColor(20,20,20);
+  doc.text(s(biz.name), M, y); y+=7;
+  doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(100,100,100);
+  const types = (biz.types||[]).filter(t=>!['establishment','point_of_interest','store','food','health'].includes(t)).slice(0,3);
+  if (types.length) { doc.text(s(types.join(' / ').replace(/_/g,' ')), M, y); y+=5; }
+  if (biz.formatted_address) { doc.text(s(biz.formatted_address), M, y); y+=5; }
+  if (biz.formatted_phone_number) { doc.text('Tel: '+s(biz.formatted_phone_number), M, y); y+=5; }
+  if (biz.website) { doc.text('Site: '+s(biz.website.replace(/^https?:\/\//,'')).slice(0,60), M, y); y+=5; }
+  y+=4;
+
+  // 4 metric boxes
+  const bw=(CW-9)/4;
+  metBox(M,      y, bw, 'Avaliacao Google', biz.rating?biz.rating.toFixed(1)+' / 5.0':'N/A', (biz.rating||0)>=4?[29,158,117]:[226,75,74]);
+  metBox(M+bw+3, y, bw, 'Total Avaliacoes', (biz.user_ratings_total||0).toLocaleString('pt-BR'), [186,117,23]);
+  metBox(M+bw*2+6,y,bw, 'Fotos',            String(biz.photos?.length||0), (biz.photos?.length||0)>=15?[29,158,117]:[186,117,23]);
+  metBox(M+bw*3+9,y,bw, 'Score de Saude',   score+'/100', sRgb);
+  y+=26;
+
+  // Status badges
+  const badges=[
+    {l:'Status',v:biz.business_status==='OPERATIONAL'?'Operacional':(biz.business_status||'?'),ok:biz.business_status==='OPERATIONAL'},
+    {l:'Telefone',v:biz.formatted_phone_number?'Cadastrado':'Ausente',ok:!!biz.formatted_phone_number},
+    {l:'Website',v:biz.website?'Cadastrado':'Ausente',ok:!!biz.website},
+    {l:'Horarios',v:biz.opening_hours?'Cadastrado':'Ausente',ok:!!biz.opening_hours},
+  ];
+  const bw2=(CW-6)/4;
+  badges.forEach((b,i) => {
+    const rgb=b.ok?[29,158,117]:[186,117,23];
+    doc.setFillColor(...rgb); doc.roundedRect(M+i*(bw2+2),y,bw2,10,2,2,'F');
+    doc.setTextColor(255,255,255); doc.setFontSize(6.5); doc.setFont('helvetica','bold');
+    doc.text(b.l.toUpperCase(), M+i*(bw2+2)+bw2/2, y+4, {align:'center'});
+    doc.setFontSize(7.5); doc.setFont('helvetica','normal');
+    doc.text(s(b.v), M+i*(bw2+2)+bw2/2, y+8.5, {align:'center'});
+  });
+  y+=16;
+
+  /* ===================== CHECKLIST ===================== */
+  sec('Checklist de Otimizacao', [29,158,117]);
   const checks = [
-    {l:'Avaliação ≥ 4★',ok:(biz.rating||0)>=4,w:(biz.rating||0)>=3,v:biz.rating?biz.rating.toFixed(1)+' ★':'N/A'},
-    {l:'Avaliações ≥ 50',ok:(biz.user_ratings_total||0)>=50,w:(biz.user_ratings_total||0)>=20,v:(biz.user_ratings_total||0)+' avaliações'},
-    {l:'Telefone',ok:!!biz.formatted_phone_number,v:biz.formatted_phone_number||'Não cadastrado'},
-    {l:'Website',ok:!!biz.website,v:biz.website?'Cadastrado':'Não cadastrado'},
-    {l:'Horários',ok:!!biz.opening_hours,v:biz.opening_hours?'Cadastrado':'Não cadastrado'},
-    {l:'Fotos (≥10)',ok:(biz.photos?.length||0)>=10,w:(biz.photos?.length||0)>=3,v:(biz.photos?.length||0)+' fotos'},
-    {l:'Perfil ativo',ok:biz.business_status==='OPERATIONAL',v:biz.business_status==='OPERATIONAL'?'Operacional':(biz.business_status||'?')},
+    {l:'Avaliacao >= 4 estrelas',  ok:(biz.rating||0)>=4,   w:(biz.rating||0)>=3,   v:biz.rating?biz.rating.toFixed(1)+' estrelas':'Sem avaliacao'},
+    {l:'Volume >= 50 avaliacoes',  ok:(biz.user_ratings_total||0)>=50, w:(biz.user_ratings_total||0)>=20, v:(biz.user_ratings_total||0)+' avaliacoes'},
+    {l:'Telefone cadastrado',      ok:!!biz.formatted_phone_number, v:s(biz.formatted_phone_number||'Nao cadastrado')},
+    {l:'Website cadastrado',       ok:!!biz.website,        v:biz.website?'Sim':'Nao'},
+    {l:'Horarios de funcionamento',ok:!!biz.opening_hours,  v:biz.opening_hours?'Cadastrado':'Ausente'},
+    {l:'Fotos (>= 15)',            ok:(biz.photos?.length||0)>=15, w:(biz.photos?.length||0)>=8, v:(biz.photos?.length||0)+' fotos'},
+    {l:'Perfil ativo / operacional',ok:biz.business_status==='OPERATIONAL', v:s(biz.business_status||'Desconhecido')},
+    {l:'Respostas a avaliacoes',   ok:false, w:true, v:'Verificar no Google (API limitada)'},
   ];
   checks.forEach(c => {
-    ck(10);
-    const col=c.ok?[29,158,117]:c.w?[186,117,23]:[226,75,74];
-    const sym=c.ok?'✓':c.w?'!':'✗';
-    doc.setFillColor(...col); doc.circle(M+3,y+1.5,3,'F');
+    ck(9);
+    const rgb=c.ok?[29,158,117]:c.w?[186,117,23]:[226,75,74];
+    const sym=c.ok?'+':c.w?'!':'x';
+    doc.setFillColor(...rgb); doc.circle(M+3,y+1.5,3,'F');
     doc.setTextColor(255,255,255); doc.setFontSize(7); doc.setFont('helvetica','bold');
-    doc.text(sym,M+3,y+2.5,{align:'center'});
-    doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.setTextColor(20,20,20);
-    doc.text(c.l, M+9, y+3);
-    doc.setTextColor(100,100,100); doc.setFontSize(9);
-    doc.text(c.v, M+CW, y+3, {align:'right'});
+    doc.text(sym, M+3, y+2.5, {align:'center'});
+    doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(20,20,20);
+    doc.text(s(c.l), M+9, y+3);
+    doc.setTextColor(100,100,100); doc.setFontSize(8);
+    doc.text(s(c.v), M+CW, y+3, {align:'right'});
     y+=8;
-  }); y+=4;
+  });
+  y+=4;
 
-  // Opportunities
-  ck(30); doc.setFontSize(12); doc.setFont('helvetica','bold'); doc.setTextColor(0,0,0);
-  doc.text('Oportunidades', M, y); y+=7;
-  doc.setDrawColor(226,75,74); doc.line(M,y,M+CW,y); y+=5;
-  buildOpportunities(biz).forEach(o => {
-    ck(16);
-    const col=o.p==='high'?[226,75,74]:o.p==='med'?[186,117,23]:[29,158,117];
-    doc.setFillColor(...col); doc.roundedRect(M,y,2,11,0,0,'F');
-    doc.setFontSize(10); doc.setFont('helvetica','bold'); doc.setTextColor(20,20,20);
-    doc.text(o.t, M+6, y+5);
-    doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(80,80,80);
-    doc.text(o.d.slice(0,95), M+6, y+10);
-    y+=15;
-  }); y+=4;
-
-  // AI
-  if (APP.aiText) {
-    const ai = APP.aiText;
-    ck(30); doc.setFontSize(12); doc.setFont('helvetica','bold'); doc.setTextColor(0,0,0);
-    doc.text('Diagnóstico por IA', M, y); y+=7;
-    doc.setDrawColor(127,119,221); doc.line(M,y,M+CW,y); y+=5;
-    if (ai.score_comment) { ck(10); doc.setFontSize(10); doc.setFont('helvetica','italic'); doc.setTextColor(60,50,180); doc.text('"'+ai.score_comment+'"',M,y); y+=8; }
-    if (ai.strengths?.length) {
-      ck(10); doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(29,158,117);
-      doc.text('Pontos fortes:', M, y); y+=5;
-      ai.strengths.forEach(s=>{ck(6);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(40,40,40);doc.text('✓ '+s,M+4,y);y+=5;});
-      y+=2;
-    }
-    if (ai.problems?.length) {
-      ck(10); doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(226,75,74);
-      doc.text('Problemas:', M, y); y+=5;
-      ai.problems.forEach(s=>{ck(6);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(40,40,40);doc.text('• '+s,M+4,y);y+=5;});
-      y+=2;
-    }
+  /* ===================== OPORTUNIDADES ===================== */
+  ck(16); sec('Oportunidades de Melhoria', [226,75,74]);
+  const opps = buildOpportunities(biz);
+  if (!opps.length) {
+    doc.setFontSize(9); doc.setTextColor(100,100,100);
+    doc.text('Nenhuma oportunidade critica identificada.', M, y); y+=8;
+  } else {
+    opps.forEach(o => {
+      const lines = doc.splitTextToSize(s(o.d), CW-10);
+      const h = lines.length*4+16;
+      ck(h+4);
+      const rgb=o.p==='high'?[226,75,74]:o.p==='med'?[186,117,23]:[29,158,117];
+      doc.setFillColor(249,249,247); doc.roundedRect(M,y,CW,h,2,2,'F');
+      doc.setFillColor(...rgb); doc.roundedRect(M,y,3,h,2,0,'F');
+      doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(20,20,20);
+      doc.text(s(o.t), M+7, y+6);
+      doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(80,80,80);
+      doc.text(lines, M+7, y+12);
+      y+=h+4;
+    });
   }
+  y+=2;
 
-  // Reviews
+  /* ===================== REPUTACAO ===================== */
+  ck(16); sec('Reputacao & Avaliacoes', [186,117,23]);
   const reviews = biz.reviews||[];
+  const total = biz.user_ratings_total||0;
+  const rating = biz.rating||0;
+
+  // Star distribution (visual bar)
+  doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(20,20,20);
+  doc.text('Nota media: '+rating.toFixed(1)+' / 5.0  ('+total.toLocaleString('pt-BR')+' avaliacoes)', M, y); y+=7;
+
+  // rating bar
+  const rStars=[5,4,3,2,1];
+  const starCounts={5:0,4:0,3:0,2:0,1:0};
+  reviews.forEach(r=>{ if(starCounts[r.rating]!==undefined) starCounts[r.rating]++; });
+  rStars.forEach(st => {
+    ck(6);
+    const cnt = starCounts[st];
+    const pct = reviews.length ? cnt/reviews.length : 0;
+    doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(60,60,60);
+    doc.text(st+' str', M, y+3.5);
+    doc.setFillColor(230,230,225); doc.roundedRect(M+14,y,80,5,1,1,'F');
+    if(pct>0){ doc.setFillColor(186,117,23); doc.roundedRect(M+14,y,80*pct,5,1,1,'F'); }
+    doc.setFontSize(7); doc.setTextColor(120,120,120);
+    doc.text(cnt+'x', M+97, y+4);
+    y+=7;
+  });
+  y+=4;
+
+  // Review cards
   if (reviews.length) {
-    ck(30); doc.setFontSize(12); doc.setFont('helvetica','bold'); doc.setTextColor(0,0,0);
-    doc.text('Avaliações recentes', M, y); y+=7;
-    doc.setDrawColor(186,117,23); doc.line(M,y,M+CW,y); y+=5;
-    reviews.slice(0,4).forEach(rv => {
-      const txt = (rv.text||'Sem texto').slice(0,200);
-      const lines = doc.splitTextToSize(txt,CW-10);
-      const h = lines.length*4.5+14;
-      ck(h+4); doc.setFillColor(250,250,248); doc.roundedRect(M,y,CW,h,2,2,'F');
-      doc.setFontSize(10); doc.setTextColor(186,117,23); doc.setFont('helvetica','bold');
-      doc.text('★'.repeat(rv.rating)+'☆'.repeat(5-rv.rating), M+4, y+6);
-      doc.setFontSize(8); doc.setTextColor(80,80,80); doc.setFont('helvetica','normal');
-      doc.text((rv.author_name||'Anônimo')+(rv.relative_time_description?' · '+rv.relative_time_description:''), M+4, y+11);
-      doc.setFontSize(9); doc.setTextColor(30,30,30);
-      doc.text(lines, M+4, y+17); y+=h+4;
+    doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(20,20,20);
+    doc.text('Avaliacoes recentes (amostra da API — ate 5 registros)', M, y); y+=6;
+    reviews.slice(0,5).forEach(rv => {
+      const txt = s((rv.text||'(sem texto)').slice(0,220));
+      const lines = doc.splitTextToSize(txt, CW-10);
+      const h = lines.length*4.5+18;
+      ck(h+4);
+      doc.setFillColor(250,249,246); doc.roundedRect(M,y,CW,h,2,2,'F');
+      const stars='*'.repeat(rv.rating||0)+'_'.repeat(5-(rv.rating||0));
+      doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(186,117,23);
+      doc.text('['+stars+']  '+String(rv.rating||0)+'/5', M+4, y+6);
+      doc.setFontSize(7.5); doc.setFont('helvetica','normal'); doc.setTextColor(100,100,100);
+      const author = s(rv.author_name||'Anonimo')+(rv.relative_time_description?' · '+s(rv.relative_time_description):'');
+      doc.text(author, M+4, y+11.5);
+      const hasReply=!!(rv.owner_reply?.text||rv.owner_answer||rv.reply?.text);
+      const replyTxt=hasReply?'[Respondido]':'[Verificar resposta no Google]';
+      doc.setTextColor(hasReply?29:150, hasReply?158:150, hasReply?117:150);
+      doc.text(replyTxt, M+CW-4, y+11.5, {align:'right'});
+      doc.setFontSize(8.5); doc.setFont('helvetica','normal'); doc.setTextColor(30,30,30);
+      doc.text(lines, M+4, y+17);
+      y+=h+4;
     });
   }
 
-  // Footer
+  /* ===================== CONCORRENTES ===================== */
+  ck(16); sec('Analise de Concorrentes', [71,51,180]);
+  const comps = APP.competitors||[];
+  if (!comps.length) {
+    doc.setFontSize(9); doc.setTextColor(100,100,100);
+    doc.text('Concorrentes nao carregados. Acesse a aba Concorrentes e atualize.', M, y); y+=8;
+  } else {
+    // Summary row
+    const compAvg = comps.length ? (comps.reduce((a,b)=>a+(b.rating||0),0)/comps.length).toFixed(2) : '-';
+    const compAvgTotal = comps.length ? Math.round(comps.reduce((a,b)=>a+(b.total||0),0)/comps.length) : 0;
+    const bw3=(CW-6)/3;
+    metBox(M,       y, bw3, 'Concorrentes mapeados', String(comps.length), [71,51,180]);
+    metBox(M+bw3+3, y, bw3, 'Nota media concorrentes', compAvg+' / 5.0', [71,51,180]);
+    metBox(M+bw3*2+6,y,bw3,'Media de avaliacoes',     compAvgTotal.toLocaleString('pt-BR'), [71,51,180]);
+    y+=26;
+
+    // Position vs competitors
+    const myRating=biz.rating||0;
+    const myTotal=biz.user_ratings_total||0;
+    const betterRating=comps.filter(c=>(c.rating||0)>myRating).length;
+    const betterTotal=comps.filter(c=>(c.total||0)>myTotal).length;
+    doc.setFontSize(8.5); doc.setFont('helvetica','normal'); doc.setTextColor(60,60,60);
+    doc.text('Posicionamento: '+betterRating+' concorrente(s) com nota superior | '+betterTotal+' com mais avaliacoes', M, y); y+=8;
+
+    // Table header
+    ck(10);
+    doc.setFillColor(71,51,180); doc.rect(M,y,CW,8,'F');
+    doc.setTextColor(255,255,255); doc.setFontSize(8); doc.setFont('helvetica','bold');
+    doc.text('#',  M+3,   y+5.5);
+    doc.text('Nome',      M+10,  y+5.5);
+    doc.text('Nota',      M+110, y+5.5);
+    doc.text('Avaliacoes',M+135, y+5.5);
+    doc.text('Status',    M+162, y+5.5);
+    y+=9;
+
+    // Table rows
+    comps.forEach((c,i) => {
+      ck(9);
+      const bg=(i%2===0)?[248,247,252]:[255,255,255];
+      doc.setFillColor(...bg); doc.rect(M,y,CW,8,'F');
+      const ratingRgb=(c.rating||0)>=4?[29,158,117]:(c.rating||0)>=3?[186,117,23]:[226,75,74];
+      doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(40,40,40);
+      doc.text(String(i+1), M+3, y+5.5);
+      doc.text(s(c.name||'').slice(0,38), M+10, y+5.5);
+      doc.setTextColor(...ratingRgb); doc.setFont('helvetica','bold');
+      doc.text((c.rating||0).toFixed(1), M+110, y+5.5);
+      doc.setTextColor(40,40,40); doc.setFont('helvetica','normal');
+      doc.text(String(c.total||0), M+135, y+5.5);
+      const stOk=c.status==='OPERATIONAL';
+      doc.setTextColor(stOk?29:226, stOk?158:75, stOk?117:74);
+      doc.text(stOk?'Ativo':'Inativo', M+162, y+5.5);
+      y+=8;
+    });
+    y+=4;
+
+    // My position highlighted
+    ck(12);
+    doc.setFillColor(29,158,117); doc.roundedRect(M,y,CW,11,2,2,'F');
+    doc.setTextColor(255,255,255); doc.setFontSize(8); doc.setFont('helvetica','bold');
+    doc.text('SEU NEGOCIO: '+s(biz.name).slice(0,38), M+4, y+4.5);
+    doc.setFont('helvetica','normal');
+    doc.text('Nota: '+myRating.toFixed(1)+'   Avaliacoes: '+myTotal.toLocaleString('pt-BR')+'   Score: '+score+'/100', M+4, y+9);
+    y+=15;
+  }
+
+  /* ===================== MAPA DE CALOR SEO ===================== */
+  ck(16); sec('Mapa de Calor SEO (Grid Search)', [24,95,165]);
+  const hm = APP.heatmapResults;
+  if (!hm) {
+    doc.setFontSize(9); doc.setTextColor(100,100,100);
+    doc.text('Mapa de Calor nao gerado. Acesse a aba Mapa de Calor SEO e clique em Gerar Mapa.', M, y); y+=8;
+  } else {
+    doc.setFontSize(9); doc.setFont('helvetica','normal'); doc.setTextColor(60,60,60);
+    doc.text('Palavra-chave buscada: "'+s(hm.keyword)+'"  |  Raio: ~1km por ponto do grid 3x3', M, y); y+=8;
+
+    // 3 stat boxes
+    const bw4=(CW-6)/3;
+    const bestDisp=hm.bestRank>=99?'20+':hm.bestRank+'o';
+    const avgDisp=hm.avgRankRaw>=99?'20+':Math.round(hm.avgRankRaw)+'o';
+    const t3rgb=hm.top3Count>0?[29,158,117]:[226,75,74];
+    const bstRgb=hm.bestRank<=3?[29,158,117]:hm.bestRank<=10?[186,117,23]:[226,75,74];
+    const avgRgb=hm.avgRankRaw<=7?[29,158,117]:hm.avgRankRaw<=15?[186,117,23]:[226,75,74];
+    metBox(M,       y, bw4, 'Pontos no Top 3', hm.top3Count+'/8', t3rgb);
+    metBox(M+bw4+3, y, bw4, 'Melhor posicao',  bestDisp, bstRgb);
+    metBox(M+bw4*2+6,y,bw4,'Posicao media',   avgDisp, avgRgb);
+    y+=26;
+
+    // Grid visual
+    const dirs=['NO','N','NE','O','[VOCE]','L','SO','S','SE'];
+    const cellW=CW/3-2, cellH=18;
+    hm.grid.forEach((rank,i) => {
+      const col=i%3, row=Math.floor(i/3);
+      const cx=M+col*(cellW+3), cy=y+row*(cellH+2);
+      if(i===4){
+        doc.setFillColor(24,95,165); doc.roundedRect(cx,cy,cellW,cellH,2,2,'F');
+        doc.setTextColor(255,255,255); doc.setFontSize(7); doc.setFont('helvetica','bold');
+        doc.text('VOCE', cx+cellW/2, cy+8, {align:'center'});
+        doc.setFontSize(6); doc.setFont('helvetica','normal');
+        doc.text(s(biz.name).slice(0,12), cx+cellW/2, cy+13, {align:'center'});
+      } else {
+        const num=(rank==='20+'||rank==='N/A'||rank==='Erro')?99:(parseInt(rank)||99);
+        let rgb;
+        if(num<=3)  rgb=[29,158,117];
+        else if(num<=7) rgb=[76,175,125];
+        else if(num<=10) rgb=[232,160,32];
+        else if(num<=15) rgb=[212,88,26];
+        else            rgb=[146,43,33];
+        doc.setFillColor(...rgb); doc.roundedRect(cx,cy,cellW,cellH,2,2,'F');
+        doc.setTextColor(255,255,255); doc.setFontSize(6.5); doc.setFont('helvetica','bold');
+        doc.text(dirs[i], cx+cellW/2, cy+6, {align:'center'});
+        doc.setFontSize(11);
+        doc.text(num>=99?'20+':String(num), cx+cellW/2, cy+14, {align:'center'});
+      }
+    });
+    y+=3*(cellH+2)+4;
+
+    // Legend
+    ck(10);
+    const legend=[{rgb:[29,158,117],l:'1-3 Excelente'},{rgb:[76,175,125],l:'4-7 Boa'},{rgb:[232,160,32],l:'8-10 Media'},{rgb:[212,88,26],l:'11-15 Fraca'},{rgb:[146,43,33],l:'20+ Invisivel'}];
+    let lx=M;
+    legend.forEach(lg=>{
+      doc.setFillColor(...lg.rgb); doc.roundedRect(lx,y,3,3.5,0.5,0.5,'F');
+      doc.setFontSize(6.5); doc.setFont('helvetica','normal'); doc.setTextColor(60,60,60);
+      doc.text(lg.l, lx+5, y+3.5);
+      lx+=35;
+    });
+    y+=8;
+
+    // Diagnosis
+    ck(20);
+    let diagTitle, diagText;
+    if(hm.top3Count>=5){ diagTitle='Excelente visibilidade local!'; diagText='O negocio aparece no Top 3 em '+hm.top3Count+'/8 pontos — presenca local muito forte.'; }
+    else if(hm.top3Count>=2){ diagTitle='Visibilidade parcial — pode melhorar'; diagText='Visivel no Top 3 em apenas '+hm.top3Count+'/8 pontos. Fotos recentes e avaliacoes consistentes ajudam.'; }
+    else if(hm.top10Count>=3){ diagTitle='Baixa visibilidade — acao necessaria'; diagText='Fora do Top 3 na maioria dos pontos. Estrategia de avaliacoes e Google Posts ajudam a subir.'; }
+    else{ diagTitle='Visibilidade critica — negocio quase invisivel'; diagText='Empresa nao aparece no Top 20. Check-ins, postagens semanais e avaliacoes recentes sao urgentes.'; }
+    doc.setFillColor(240,245,255); doc.roundedRect(M,y,CW,22,2,2,'F');
+    doc.setFillColor(24,95,165); doc.roundedRect(M,y,3,22,2,0,'F');
+    doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(24,95,165);
+    doc.text(diagTitle, M+7, y+8);
+    doc.setFontSize(8); doc.setFont('helvetica','normal'); doc.setTextColor(40,40,40);
+    const dlines=doc.splitTextToSize(diagText,CW-12);
+    doc.text(dlines, M+7, y+14);
+    y+=26;
+  }
+
+  /* ===================== DIAGNOSTICO IA ===================== */
+  if (APP.aiText) {
+    const ai = APP.aiText;
+    ck(16); sec('Diagnostico por Inteligencia Artificial', [100,80,200]);
+    if (ai.score_comment) {
+      ck(16);
+      doc.setFillColor(246,244,255); doc.roundedRect(M,y,CW,14,2,2,'F');
+      doc.setFontSize(9); doc.setFont('helvetica','italic'); doc.setTextColor(70,50,180);
+      const sc=doc.splitTextToSize('"'+s(ai.score_comment)+'"',CW-8);
+      doc.text(sc, M+4, y+6);
+      y+=18;
+    }
+    if (ai.strengths?.length) {
+      ck(10); doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(29,158,117);
+      doc.text('Pontos fortes:', M, y); y+=5;
+      ai.strengths.forEach(st=>{
+        ck(7);
+        const ls=doc.splitTextToSize('+ '+s(st),CW-6);
+        doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(30,80,50);
+        doc.text(ls,M+3,y); y+=ls.length*5+1;
+      });
+      y+=2;
+    }
+    if (ai.weaknesses?.length || ai.problems?.length) {
+      const probs=ai.weaknesses||ai.problems||[];
+      ck(10); doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(226,75,74);
+      doc.text('Pontos de melhoria:', M, y); y+=5;
+      probs.forEach(pr=>{
+        ck(7);
+        const ls=doc.splitTextToSize('x '+s(pr),CW-6);
+        doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(80,30,30);
+        doc.text(ls,M+3,y); y+=ls.length*5+1;
+      });
+      y+=2;
+    }
+    if (ai.recommendations?.length) {
+      ck(10); doc.setFontSize(9); doc.setFont('helvetica','bold'); doc.setTextColor(186,117,23);
+      doc.text('Recomendacoes:', M, y); y+=5;
+      ai.recommendations.forEach(rc=>{
+        ck(7);
+        const ls=doc.splitTextToSize('-> '+s(rc),CW-6);
+        doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(70,50,10);
+        doc.text(ls,M+3,y); y+=ls.length*5+1;
+      });
+    }
+  }
+
+  /* ===================== FOOTER ===================== */
   const pages=doc.getNumberOfPages();
-  for(let p=1;p<=pages;p++){
+  for(let p=2;p<=pages;p++){
     doc.setPage(p);
     doc.setFillColor(245,245,243); doc.rect(0,287,W,10,'F');
     doc.setFontSize(7); doc.setTextColor(160,160,160); doc.setFont('helvetica','normal');
-    doc.text('GBP Pro · Análise baseada em dados públicos do Google Places', M, 293);
-    doc.text('Pág. '+p+'/'+pages, W-M, 293, {align:'right'});
+    doc.text('GBP Pro  |  Analise baseada em dados publicos do Google Places API', M, 293);
+    doc.text('Pag. '+(p-1)+'/'+(pages-1), W-M, 293, {align:'right'});
   }
 
-  doc.save('Relatorio_GBP_'+biz.name.replace(/[^a-zA-Z0-9]/g,'_').slice(0,30)+'.pdf');
+  doc.save('Relatorio_GBP_'+s(biz.name).replace(/[^a-zA-Z0-9]/g,'_').slice(0,30)+'.pdf');
 }
 
 /* ===========================
